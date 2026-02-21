@@ -1,0 +1,766 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   DOCUVOICE DESIGN SYSTEM
+   Wine Red + Warm Dark — Inspired by AudoSic/Superadt
+   ============================================ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* ── Background Layers (OpenClaw-style dark) ── */
+  --dv-bg-base: #12141a;
+  --dv-bg-surface: #181b22;
+  --dv-bg-elevated: #1e2028;
+  --dv-bg-hover: #262a35;
+  --dv-bg-active: #2f3340;
+
+  /* ── Borders ── */
+  --dv-border-subtle: #27272a;
+  --dv-border-default: #3f3f46;
+  --dv-border-strong: #52525b;
+
+  /* ── Text ── */
+  --dv-text-primary: #e4e4e7;
+  --dv-text-secondary: #a1a1aa;
+  --dv-text-muted: #71717a;
+  --dv-text-inverse: #12141a;
+
+  /* ── Primary: Wine Red (BRIGHT, visible like OpenClaw's #ff5c5c) ── */
+  --dv-wine: #DC2647;
+  --dv-wine-light: #F04368;
+  --dv-wine-bright: #FF6B8A;
+  --dv-wine-dim: #9B1B35;
+  --dv-wine-deep: #5C1024;
+  --dv-wine-glow: rgba(220, 38, 71, 0.35);
+  --dv-wine-subtle: rgba(220, 38, 71, 0.15);
+
+  /* ── Secondary accents ── */
+  --dv-rose: #FF6B8A;
+  --dv-amber: #f59e0b;
+  --dv-emerald: #22c55e;
+  --dv-cyan: #67E8F9;
+  --dv-red: #ef4444;
+  --dv-green: #22c55e;
+
+  /* ── Voice Orb Gradients ── */
+  --dv-orb-idle: radial-gradient(circle at 35% 35%, #2f3340 0%, #1e2028 40%, #12141a 100%);
+  --dv-orb-connecting: radial-gradient(circle at 35% 35%, #f59e0b 0%, #DC2647 50%, #9B1B35 100%);
+  --dv-orb-listening: radial-gradient(circle at 35% 35%, #FF6B8A 0%, #DC2647 40%, #9B1B35 100%);
+  --dv-orb-speaking: radial-gradient(circle at 35% 35%, #FF6B8A 0%, #F04368 30%, #DC2647 60%, #5C1024 100%);
+  --dv-orb-thinking: radial-gradient(circle at 35% 35%, #F04368 0%, #8B2FC6 50%, #5C1024 100%);
+  --dv-orb-tool-call: radial-gradient(circle at 35% 35%, #f59e0b 0%, #DC2647 50%, #9B1B35 100%);
+  --dv-orb-error: radial-gradient(circle at 50% 50%, #ef4444 0%, #991b1b 60%, #5C1024 100%);
+
+  /* ── Shadows ── */
+  --dv-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --dv-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --dv-shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --dv-shadow-orb: 0 0 60px rgba(220, 38, 71, 0.3);
+
+  /* ── Animation Tokens ── */
+  --dv-duration-fast: 150ms;
+  --dv-duration-normal: 300ms;
+  --dv-duration-slow: 500ms;
+  --dv-duration-orb: 2000ms;
+  --dv-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --dv-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Light mode defaults (shadcn fallback) */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* ── Dark mode: DocuVoice Wine Red (OpenClaw-inspired structure) ── */
+.dark {
+  --background: #12141a;
+  --foreground: #e4e4e7;
+  --card: #181b22;
+  --card-foreground: #e4e4e7;
+  --popover: #1e2028;
+  --popover-foreground: #e4e4e7;
+  --primary: #DC2647;
+  --primary-foreground: #fafafa;
+  --secondary: #1e2028;
+  --secondary-foreground: #e4e4e7;
+  --muted: #262a35;
+  --muted-foreground: #a1a1aa;
+  --accent: #262a35;
+  --accent-foreground: #e4e4e7;
+  --destructive: #ef4444;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #DC2647;
+  --chart-1: #DC2647;
+  --chart-2: #F04368;
+  --chart-3: #FF6B8A;
+  --chart-4: #f59e0b;
+  --chart-5: #22c55e;
+  --sidebar: #12141a;
+  --sidebar-foreground: #e4e4e7;
+  --sidebar-primary: #DC2647;
+  --sidebar-primary-foreground: #fafafa;
+  --sidebar-accent: #1e2028;
+  --sidebar-accent-foreground: #e4e4e7;
+  --sidebar-border: #27272a;
+  --sidebar-ring: #DC2647;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* ============================================
+   KEYFRAME ANIMATIONS
+   ============================================ */
+
+/* ── Orb: Idle breathing (slow, ambient) ── */
+@keyframes orb-breathe {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 40px rgba(220, 38, 71, 0.12),
+      inset 0 0 30px rgba(220, 38, 71, 0.05);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow:
+      0 0 60px rgba(220, 38, 71, 0.22),
+      inset 0 0 40px rgba(220, 38, 71, 0.08);
+  }
+}
+
+/* ── Orb: Connecting pulse ── */
+@keyframes orb-connecting {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+
+/* ── Orb: Thinking rotation ── */
+@keyframes orb-thinking {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Orb: Error shake ── */
+@keyframes orb-error {
+  0% { transform: scale(1) translateX(0); }
+  15% { transform: scale(1.02) translateX(-3px); }
+  30% { transform: scale(1.02) translateX(3px); }
+  45% { transform: scale(1) translateX(-2px); }
+  60% { transform: scale(1) translateX(2px); }
+  75% { transform: scale(0.98) translateX(-1px); }
+  100% { transform: scale(1) translateX(0); }
+}
+
+/* ── Orb: Ripple rings ── */
+@keyframes orb-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* ── Orb: Inner glow pulse ── */
+@keyframes orb-glow-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 60px var(--dv-wine-glow),
+      0 0 120px rgba(220, 38, 71, 0.12),
+      inset 0 0 40px rgba(255, 107, 138, 0.08);
+  }
+  50% {
+    box-shadow:
+      0 0 80px var(--dv-wine-glow),
+      0 0 160px rgba(220, 38, 71, 0.18),
+      inset 0 0 60px rgba(255, 107, 138, 0.12);
+  }
+}
+
+/* ── Orb: Surface shimmer (3D sphere effect) ── */
+@keyframes orb-surface-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ── Waveform bars ── */
+@keyframes waveform-bar {
+  0% { height: 6px; }
+  100% { height: var(--bar-max-height, 32px); }
+}
+
+/* ── Page entrance ── */
+@keyframes page-enter {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Finding card slide in ── */
+@keyframes finding-enter {
+  0% { opacity: 0; transform: translateX(20px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Processing shimmer ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── General slide up ── */
+@keyframes slide-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── General fade in ── */
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ── Connecting dots ── */
+@keyframes connecting-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1.2); }
+}
+
+/* ── Live indicator pulse ── */
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Ambient float (for background elements) ── */
+@keyframes ambient-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  33% { transform: translateY(-8px) scale(1.02); }
+  66% { transform: translateY(4px) scale(0.99); }
+}
+
+/* ── Aurora gradient blob drifts ── */
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(3%, 5%) scale(1.05); }
+  50% { transform: translate(-2%, 3%) scale(0.97); }
+  75% { transform: translate(4%, -2%) scale(1.03); }
+}
+
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-4%, 3%) scale(1.04); }
+  66% { transform: translate(3%, -4%) scale(0.98); }
+}
+
+@keyframes aurora-drift-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(2%, -3%) scale(1.02); }
+  50% { transform: translate(-3%, 5%) scale(1.06); }
+  75% { transform: translate(1%, 2%) scale(0.96); }
+}
+
+@keyframes aurora-drift-4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  30% { transform: translate(-3%, -2%) scale(1.03); }
+  60% { transform: translate(2%, 4%) scale(0.98); }
+}
+
+/* ── Star twinkle ── */
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--star-base-opacity, 0.3); transform: scale(1); }
+  50% { opacity: var(--star-peak-opacity, 0.8); transform: scale(1.3); }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.page-enter { animation: page-enter 0.4s var(--dv-ease) forwards; }
+.finding-enter { animation: finding-enter 0.3s var(--dv-ease) forwards; }
+.slide-up { animation: slide-up 0.3s var(--dv-ease) forwards; }
+.fade-in { animation: fade-in 0.3s var(--dv-ease) forwards; }
+
+.processing-shimmer {
+  background: linear-gradient(90deg, var(--dv-bg-surface) 25%, var(--dv-bg-hover) 50%, var(--dv-bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   VOICE ORB — Premium 3D Sphere
+   ============================================ */
+
+.orb-body {
+  position: relative;
+  transition:
+    background var(--dv-duration-slow) var(--dv-ease),
+    box-shadow var(--dv-duration-slow) var(--dv-ease);
+  /* 3D sphere highlight */
+  overflow: hidden;
+}
+
+/* Surface highlight overlay — creates the 3D sphere illusion */
+.orb-body::before {
+  content: "";
+  position: absolute;
+  top: 8%;
+  left: 15%;
+  width: 45%;
+  height: 35%;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.12) 0%,
+    rgba(255, 255, 255, 0.04) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Subtle rim light at bottom edge */
+.orb-body::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  right: 10%;
+  height: 40%;
+  border-radius: 0 0 50% 50%;
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.03), transparent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ── State: Idle ── */
+.orb-idle .orb-body {
+  background: var(--dv-orb-idle);
+  animation: orb-breathe 4s ease-in-out infinite;
+}
+
+/* ── State: Connecting ── */
+.orb-connecting .orb-body {
+  background: var(--dv-orb-connecting);
+  animation: orb-connecting 1s ease-in-out infinite;
+  box-shadow: 0 0 50px rgba(245, 158, 11, 0.25);
+}
+
+/* ── State: Listening ── */
+.orb-listening .orb-body {
+  background: var(--dv-orb-listening);
+  animation: orb-glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── State: Speaking ── */
+.orb-speaking .orb-body {
+  background: var(--dv-orb-speaking);
+  box-shadow:
+    0 0 60px rgba(220, 38, 71, 0.4),
+    0 0 120px rgba(220, 38, 71, 0.15),
+    inset 0 0 30px rgba(255, 107, 138, 0.1);
+  animation: orb-glow-pulse 1.5s ease-in-out infinite;
+}
+
+/* ── State: Thinking ── */
+.orb-thinking .orb-body {
+  background: var(--dv-orb-thinking);
+  box-shadow: 0 0 60px rgba(139, 47, 198, 0.3);
+}
+.orb-thinking .orb-ring {
+  animation: orb-thinking 2.5s linear infinite;
+}
+
+/* ── State: Tool Call ── */
+.orb-tool-call .orb-body {
+  background: var(--dv-orb-tool-call);
+  box-shadow: 0 0 50px rgba(245, 158, 11, 0.25);
+}
+
+/* ── State: Error ── */
+.orb-error .orb-body {
+  background: var(--dv-orb-error);
+  animation: orb-error 0.5s ease-out 1;
+  box-shadow: 0 0 50px rgba(239, 68, 68, 0.3);
+}
+
+/* ── Ripple rings ── */
+.orb-ripple {
+  position: absolute;
+  inset: -24px;
+  border-radius: 9999px;
+  border: 1px solid currentColor;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.orb-listening .orb-ripple,
+.orb-speaking .orb-ripple {
+  border-color: rgba(220, 38, 71, 0.2);
+  animation: orb-ripple 2.5s ease-out infinite;
+}
+.orb-listening .orb-ripple:nth-child(2),
+.orb-speaking .orb-ripple:nth-child(2) {
+  border-color: rgba(220, 38, 71, 0.14);
+  animation-delay: 0.8s;
+}
+.orb-listening .orb-ripple:nth-child(3),
+.orb-speaking .orb-ripple:nth-child(3) {
+  border-color: rgba(220, 38, 71, 0.08);
+  animation-delay: 1.6s;
+}
+
+/* ── Equalizer bars ── */
+.orb-equalizer-bar {
+  width: 3px;
+  min-height: 4px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: waveform-bar 0.8s ease-in-out infinite alternate;
+}
+
+/* ── Connecting dots ── */
+.connecting-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: connecting-dot 1.2s ease-in-out infinite;
+}
+.connecting-dot:nth-child(2) { animation-delay: 0.15s; }
+.connecting-dot:nth-child(3) { animation-delay: 0.3s; }
+
+/* ── Live indicator ── */
+.live-dot {
+  animation: live-pulse 1.5s ease-in-out infinite;
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .orb-idle .orb-body,
+  .orb-connecting .orb-body,
+  .orb-error .orb-body,
+  .orb-listening .orb-body,
+  .orb-speaking .orb-body {
+    animation: none;
+  }
+  .orb-thinking .orb-ring { animation: none; }
+  .orb-ripple { animation: none !important; display: none; }
+  .orb-equalizer-bar { animation: none; }
+  .connecting-dot { animation: none; opacity: 0.7; }
+  .page-enter, .finding-enter, .slide-up, .fade-in {
+    animation: none; opacity: 1; transform: none;
+  }
+  .processing-shimmer { animation: none; }
+  .live-dot { animation: none; }
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--dv-border-default);
+  border-radius: 2px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--dv-border-strong);
+}
+
+/* ============================================
+   LANDING ORB — Gooey 3D Orb with Rings
+   ============================================ */
+
+.landing-orb-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 180px;
+}
+
+.landing-orb {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  filter:
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.6))
+    drop-shadow(0 0 16px rgba(255, 255, 255, 0.3))
+    drop-shadow(0 0 20px var(--dv-wine-glow))
+    drop-shadow(0 0 8px rgba(220, 38, 71, 0.25));
+  animation: landing-orb-breathe 4.2s ease-in-out infinite;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.landing-orb:hover {
+  filter:
+    drop-shadow(0 0 6px rgba(255, 255, 255, 0.7))
+    drop-shadow(0 0 12px rgba(255, 255, 255, 0.5))
+    drop-shadow(0 0 20px rgba(255, 255, 255, 0.3))
+    drop-shadow(0 0 16px var(--dv-wine-glow))
+    drop-shadow(0 6px 30px rgba(220, 38, 71, 0.3));
+  transform: scale(1.08);
+}
+
+.landing-orb:active {
+  transform: scale(0.95);
+}
+
+@keyframes landing-orb-breathe {
+  0%   { transform: scale(1.5); }
+  15%  { transform: scale(1.53); }
+  30%  { transform: scale(1.48); }
+  45%  { transform: scale(1.44); }
+  60%  { transform: scale(1.47); }
+  85%  { transform: scale(1.53); }
+  100% { transform: scale(1.5); }
+}
+
+/* ── Icon ── */
+.landing-orb-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #ffffff;
+  z-index: 10;
+  opacity: 0.7;
+  transition: all 0.3s ease-in-out;
+}
+
+.landing-orb:hover .landing-orb-icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px #ffffff);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* ── Ball ── */
+.landing-orb-ball {
+  width: 100px;
+  height: 100px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--dv-wine);
+  filter: url(#landing-gooey);
+}
+
+/* ── Morphing blob overlay ── */
+.landing-orb-blob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 150px;
+  height: 150px;
+  background-image: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0.65) 15%,
+    var(--dv-wine-light) 50%
+  );
+  clip-path: polygon(
+    50% 25%, 65% 30%, 75% 42%, 75% 58%,
+    65% 70%, 50% 75%, 35% 70%, 26% 58%,
+    25% 42%, 35% 30%
+  );
+  animation: landing-orb-morph 15s both ease;
+  pointer-events: none;
+}
+
+@keyframes landing-orb-morph {
+  2% {
+    clip-path: polygon(
+      50% 25%, 50% 0, 75% 42%, 75% 58%,
+      65% 70%, 50% 75%, 35% 70%, 26% 58%,
+      25% 42%, 50% 0
+    );
+  }
+  4% {
+    clip-path: polygon(
+      50% 25%, 70% 0, 75% 42%, 85% 66%,
+      65% 100%, 50% 75%, 35% 100%, 15% 65%,
+      25% 42%, 30% 0
+    );
+  }
+  6% {
+    clip-path: polygon(
+      50% 25%, 50% 15%, 75% 42%, 75% 58%,
+      65% 70%, 50% 75%, 35% 70%, 26% 58%,
+      25% 42%, 50% 15%
+    );
+  }
+  7%, 59% {
+    clip-path: polygon(
+      50% 25%, 100% 12%, 75% 42%, 85% 66%,
+      65% 70%, 50% 75%, 35% 70%, 15% 65%,
+      25% 42%, 0 12%
+    );
+  }
+  9%, 57% {
+    clip-path: polygon(
+      50% 25%, 50% 0, 75% 42%, 75% 58%,
+      65% 70%, 50% 75%, 35% 70%, 26% 58%,
+      25% 42%, 50% 0
+    );
+  }
+  12%, 55%, 61% {
+    clip-path: polygon(
+      50% 25%, 65% 30%, 75% 42%, 75% 58%,
+      65% 70%, 50% 75%, 35% 70%, 26% 58%,
+      25% 42%, 35% 30%
+    );
+  }
+}
+
+/* ── 3D Rotating Rings ── */
+.landing-orb-rings {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  position: absolute;
+  inset: 0;
+  perspective: 11rem;
+}
+
+.landing-orb-rings::before,
+.landing-orb-rings::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 5px solid transparent;
+  mask:
+    linear-gradient(#fff 0 0) padding-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  background: linear-gradient(
+    white,
+    var(--dv-wine-bright),
+    var(--dv-wine),
+    var(--dv-wine-light),
+    rgba(255, 255, 255, 0.8)
+  ) border-box;
+}
+
+.landing-orb-rings::before {
+  animation: landing-ring-a 10s linear infinite;
+}
+
+.landing-orb-rings::after {
+  animation: landing-ring-b 10s linear infinite;
+}
+
+@keyframes landing-ring-a {
+  0%   { transform: rotateY(180deg) rotateX(180deg) rotateZ(180deg); }
+  50%  { transform: rotateY(360deg) rotateX(360deg) rotateZ(360deg) scale(1.1); }
+  100% { transform: rotateY(540deg) rotateX(540deg) rotateZ(540deg); }
+}
+
+@keyframes landing-ring-b {
+  0%   { transform: rotateY(90deg) rotateX(90deg) rotateZ(90deg); }
+  50%  { transform: rotateY(270deg) rotateX(270deg) rotateZ(270deg) scale(1.1); }
+  100% { transform: rotateY(450deg) rotateX(450deg) rotateZ(450deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-orb { animation: none; filter: drop-shadow(0 0 20px var(--dv-wine-glow)); }
+  .landing-orb-blob { animation: none; }
+  .landing-orb-rings::before,
+  .landing-orb-rings::after { animation: none; }
+}
