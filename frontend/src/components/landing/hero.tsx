@@ -51,7 +51,7 @@ export function Hero() {
           size="lg"
           className="border-[var(--dv-border-strong)] text-[var(--dv-text-primary)] px-8 hover:bg-[var(--dv-bg-hover)] backdrop-blur-sm"
         >
-          <Link href="https://github.com" target="_blank">
+          <Link href="https://github.com/p-sumann/docuvoice" target="_blank">
             <Github className="mr-2 size-4" />
             GitHub
           </Link>

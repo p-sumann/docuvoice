@@ -118,7 +118,7 @@ export function PricingTable() {
                     : "bg-[var(--dv-bg-active)] text-[var(--dv-text-primary)] hover:bg-[var(--dv-bg-hover)]"
                 )}
               >
-                <Link href="/sign-up">{tier.cta}</Link>
+                <Link href="/dashboard">{tier.cta}</Link>
               </Button>
             </CardContent>
           </Card>

@@ -3,7 +3,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 export default function GlobalSettingsPage() {
@@ -12,28 +11,6 @@ export default function GlobalSettingsPage() {
       <h1 className="text-xl font-bold text-[var(--dv-text-primary)]">
         Settings
       </h1>
-
-      {/* Profile */}
-      <Card className="bg-[var(--dv-bg-surface)] border-[var(--dv-border-subtle)]">
-        <CardHeader>
-          <CardTitle className="text-sm">Profile</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-[var(--dv-text-muted)]">
-            Your profile is managed through Clerk. Click below to update your
-            account details.
-          </p>
-          <Button
-            variant="outline"
-            size="sm"
-            className="border-[var(--dv-border-default)]"
-          >
-            Manage Account
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Separator className="bg-[var(--dv-border-subtle)]" />
 
       {/* Theme */}
       <Card className="bg-[var(--dv-bg-surface)] border-[var(--dv-border-subtle)]">
