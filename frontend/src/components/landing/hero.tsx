@@ -40,7 +40,7 @@ export function Hero() {
           size="lg"
           className="bg-[var(--dv-wine)] hover:bg-[var(--dv-wine-light)] text-white px-8 shadow-[0_0_20px_var(--dv-wine-glow)]"
         >
-          <Link href="/dashboard">
+          <Link href="/get-started">
             Get Started
             <ArrowRight className="ml-2 size-4" />
           </Link>
