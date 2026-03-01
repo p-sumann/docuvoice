@@ -1,19 +1,28 @@
 "use client";
 
-import { useVoiceSession } from "@/hooks/use-voice-session";
 import { VoiceOrb } from "@/components/voice/voice-orb";
 import { cn } from "@/lib/utils";
+import type { OrbState, ConnectPhase } from "@/types/voice";
 
 interface VoiceSessionControllerProps {
+  orbState: OrbState;
+  currentToolCall?: string | null;
+  errorMessage?: string | null;
+  connectPhase?: ConnectPhase;
+  audioLevel?: number;
+  onToggle: () => void;
   className?: string;
 }
 
 export function VoiceSessionController({
+  orbState,
+  currentToolCall,
+  errorMessage,
+  connectPhase,
+  audioLevel = 0,
+  onToggle,
   className,
 }: VoiceSessionControllerProps) {
-  const { orbState, currentToolCall, errorMessage, toggle } =
-    useVoiceSession();
-
   return (
     <div
       className={cn(
@@ -25,7 +34,9 @@ export function VoiceSessionController({
         state={orbState}
         currentToolCall={currentToolCall}
         errorMessage={errorMessage}
-        onToggle={toggle}
+        connectPhase={connectPhase}
+        audioLevel={audioLevel}
+        onToggle={onToggle}
       />
     </div>
   );

@@ -19,8 +19,7 @@ export function SuggestedQuestions({
   return (
     <div
       className={cn(
-        "flex gap-2 px-4 py-3 overflow-x-auto border-t border-[var(--dv-border-subtle)]",
-        "scrollbar-none",
+        "flex flex-wrap gap-2 px-4 py-3 overflow-hidden border-t border-[var(--dv-border-subtle)]",
         className
       )}
     >
@@ -29,7 +28,7 @@ export function SuggestedQuestions({
           key={q.id}
           onClick={() => onSelect(q)}
           className={cn(
-            "flex-shrink-0 px-3 py-1.5 rounded-full text-xs",
+            "px-3 py-1.5 rounded-full text-xs",
             "bg-[var(--dv-bg-elevated)] border border-[var(--dv-border-subtle)]",
             "text-[var(--dv-text-secondary)]",
             "hover:bg-[var(--dv-bg-hover)] hover:text-[var(--dv-text-primary)]",
