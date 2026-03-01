@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TemplateSelectorGrid } from "@/components/workspace/template-selector";
-import { DocumentUpload } from "@/components/documents/document-upload";
-import { DocumentList } from "@/components/documents/document-list";
+import { FilePicker } from "@/components/documents/file-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DOMAIN_PLUGINS } from "@/lib/constants";
-import { useDocuments } from "@/hooks/use-documents";
 import type { WorkspaceCreatePayload } from "@/types/plugin";
 import type { DomainType } from "@/types/workspace";
 
@@ -26,8 +24,7 @@ interface WorkspaceWizardProps {
 const steps = [
   { id: 1, title: "Choose Domain", description: "Select your use case" },
   { id: 2, title: "Upload Documents", description: "Add files to analyze" },
-  { id: 3, title: "Configure", description: "Optional plugins" },
-  { id: 4, title: "Review", description: "Activate workspace" },
+  { id: 3, title: "Review", description: "Activate workspace" },
 ];
 
 export function WorkspaceWizard({
@@ -38,17 +35,15 @@ export function WorkspaceWizard({
   const [currentStep, setCurrentStep] = useState(1);
   const [workspaceName, setWorkspaceName] = useState("");
   const [selectedDomain, setSelectedDomain] = useState<DomainType | null>(null);
-  const { documents } = useDocuments();
+  const [files, setFiles] = useState<File[]>([]);
 
   const canNext = () => {
     switch (currentStep) {
       case 1:
         return selectedDomain !== null && workspaceName.trim().length > 0;
       case 2:
-        return documents.length > 0;
+        return files.length > 0;
       case 3:
-        return true;
-      case 4:
         return true;
       default:
         return false;
@@ -56,13 +51,13 @@ export function WorkspaceWizard({
   };
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep < 3) {
       setCurrentStep((s) => s + 1);
     } else {
       onComplete({
         name: workspaceName,
         domain: selectedDomain!,
-        documents: [],
+        documents: files,
         plugins: [],
       });
     }
@@ -76,7 +71,6 @@ export function WorkspaceWizard({
       <div className="flex items-center justify-center gap-0">
         {steps.map((step, index) => (
           <div key={step.id} className="flex items-center">
-            {/* Step circle */}
             <div className="flex flex-col items-center">
               <div
                 className={cn(
@@ -100,11 +94,10 @@ export function WorkspaceWizard({
               </span>
             </div>
 
-            {/* Connector line */}
             {index < steps.length - 1 && (
               <div
                 className={cn(
-                  "w-12 h-0.5 mx-2 mb-4",
+                  "w-16 h-0.5 mx-2 mb-4",
                   currentStep > step.id
                     ? "bg-[var(--dv-green)]"
                     : "bg-[var(--dv-border-default)]"
@@ -147,28 +140,11 @@ export function WorkspaceWizard({
 
         {currentStep === 2 && (
           <div className="space-y-4 fade-in">
-            <DocumentUpload workspaceId="ws-new" />
-            {documents.length > 0 && (
-              <DocumentList documents={documents} />
-            )}
+            <FilePicker files={files} onFilesChange={setFiles} />
           </div>
         )}
 
         {currentStep === 3 && (
-          <div className="flex flex-col items-center justify-center py-12 fade-in">
-            <div className="w-12 h-12 rounded-full bg-[var(--dv-bg-active)] flex items-center justify-center mb-4">
-              <Settings2Icon className="size-6 text-[var(--dv-text-muted)]" />
-            </div>
-            <p className="text-sm text-[var(--dv-text-secondary)]">
-              Plugin configuration coming soon
-            </p>
-            <p className="text-xs text-[var(--dv-text-muted)] mt-1">
-              You can configure integrations after workspace creation
-            </p>
-          </div>
-        )}
-
-        {currentStep === 4 && (
           <div className="space-y-4 fade-in">
             <Card className="bg-[var(--dv-bg-surface)] border-[var(--dv-border-default)]">
               <CardContent className="p-6 space-y-4">
@@ -186,12 +162,8 @@ export function WorkspaceWizard({
                   <div>
                     <span className="text-[var(--dv-text-muted)]">Documents</span>
                     <p className="text-[var(--dv-text-primary)] font-medium">
-                      {documents.length} files
+                      {files.length} files
                     </p>
-                  </div>
-                  <div>
-                    <span className="text-[var(--dv-text-muted)]">Plugins</span>
-                    <p className="text-[var(--dv-text-muted)]">None configured</p>
                   </div>
                   <div>
                     <span className="text-[var(--dv-text-muted)]">Phone Number</span>
@@ -222,7 +194,7 @@ export function WorkspaceWizard({
           disabled={!canNext()}
           className="bg-[var(--dv-wine)] hover:bg-[var(--dv-wine)]/90 text-white"
         >
-          {currentStep === 4 ? (
+          {currentStep === 3 ? (
             <>
               <Rocket className="size-4 mr-1" />
               Activate Workspace
@@ -236,26 +208,5 @@ export function WorkspaceWizard({
         </Button>
       </div>
     </div>
-  );
-}
-
-// Inline icon to avoid adding another import for a simple placeholder
-function Settings2Icon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 7h-9" />
-      <path d="M14 17H5" />
-      <circle cx="17" cy="17" r="3" />
-      <circle cx="7" cy="7" r="3" />
-    </svg>
   );
 }
