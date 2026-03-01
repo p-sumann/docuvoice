@@ -2,6 +2,7 @@
 node_modules/
 .pnp
 .pnp.js
+package-lock.json
 
 # Build
 .next/
@@ -13,6 +14,7 @@ dist/
 .env
 .env.local
 .env.*.local
+infra/.env.aws
 
 # IDE
 .vscode/
@@ -25,10 +27,17 @@ dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Misc
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
 
 # Project docs (added separately)
 *.docx
