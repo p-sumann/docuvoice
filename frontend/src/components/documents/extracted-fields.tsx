@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AlertTriangle, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Tooltip,
   TooltipContent,
@@ -92,30 +91,13 @@ export function ExtractedFieldsList({
   fields,
   className,
 }: ExtractedFieldsListProps) {
-  const anomalyCount = fields.filter((f) => f.isAnomaly).length;
-
   return (
     <div className={cn("flex flex-col", className)}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2">
-        <h3 className="text-xs font-semibold text-[var(--dv-text-secondary)] uppercase tracking-wider">
-          Extracted Fields ({fields.length})
-        </h3>
-        {anomalyCount > 0 && (
-          <span className="text-[10px] text-[var(--dv-amber)]">
-            {anomalyCount} anomal{anomalyCount === 1 ? "y" : "ies"}
-          </span>
-        )}
+      <div className="divide-y divide-[var(--dv-border-subtle)]">
+        {fields.map((field, i) => (
+          <FieldRow key={`${field.key}-${i}`} field={field} />
+        ))}
       </div>
-
-      {/* Fields */}
-      <ScrollArea className="flex-1">
-        <div className="divide-y divide-[var(--dv-border-subtle)]">
-          {fields.map((field, i) => (
-            <FieldRow key={`${field.key}-${i}`} field={field} />
-          ))}
-        </div>
-      </ScrollArea>
     </div>
   );
 }

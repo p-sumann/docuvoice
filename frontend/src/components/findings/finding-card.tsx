@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   AlertTriangle,
-  ChevronDown,
   ChevronRight,
   FileText,
   Shield,
@@ -12,10 +11,7 @@ import {
   Info,
 } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { getSeverityBadgeVariant } from "@/lib/utils";
 import type { Finding } from "@/types/finding";
 
 interface FindingCardProps {
@@ -33,20 +29,20 @@ const typeIcons: Record<string, React.ElementType> = {
   red_flag: AlertTriangle,
 };
 
-const severityBorderWidth: Record<string, string> = {
-  critical: "border-l-4",
-  high: "border-l-2",
-  medium: "border-l-2",
-  low: "border-l-2",
-  info: "border-l-2",
+const severityColors: Record<string, string> = {
+  critical: "text-red-500",
+  high: "text-red-400",
+  medium: "text-amber-500",
+  low: "text-blue-400",
+  info: "text-cyan-400",
 };
 
-const severityBorderColor: Record<string, string> = {
-  critical: "border-l-red-500",
-  high: "border-l-red-400",
-  medium: "border-l-amber-500",
-  low: "border-l-blue-400",
-  info: "border-l-cyan-400",
+const severityDot: Record<string, string> = {
+  critical: "bg-red-500",
+  high: "bg-red-400",
+  medium: "bg-amber-500",
+  low: "bg-blue-400",
+  info: "bg-cyan-400",
 };
 
 export function FindingCard({
@@ -69,85 +65,83 @@ export function FindingCard({
   };
 
   return (
-    <Card
+    <div
       className={cn(
-        "finding-enter bg-[var(--dv-bg-surface)] border-[var(--dv-border-subtle)]",
-        "hover:bg-[var(--dv-bg-hover)] transition-all duration-150 cursor-pointer",
-        severityBorderWidth[finding.severity],
-        severityBorderColor[finding.severity],
+        "finding-enter rounded-md cursor-pointer transition-colors duration-150",
+        "hover:bg-[var(--dv-bg-hover)]",
+        isExpanded && "bg-[var(--dv-bg-surface)]",
         className
       )}
       onClick={handleToggle}
     >
-      <CardContent className="p-3">
-        {/* Header row */}
-        <div className="flex items-start gap-2">
-          <TypeIcon className="size-4 mt-0.5 flex-shrink-0 text-[var(--dv-text-secondary)]" />
+      {/* Compact row */}
+      <div className="flex items-center gap-2 px-2.5 py-1.5">
+        {/* Severity dot */}
+        <span
+          className={cn("size-1.5 rounded-full flex-shrink-0", severityDot[finding.severity])}
+        />
 
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Badge
-                variant={getSeverityBadgeVariant(finding.severity)}
-                className="text-[10px] h-4 px-1.5"
-              >
-                {finding.severity}
-              </Badge>
-              <span className="text-sm font-medium text-[var(--dv-text-primary)] truncate">
-                {finding.title}
-              </span>
-            </div>
+        {/* Type icon */}
+        <TypeIcon
+          className={cn("size-3 flex-shrink-0", severityColors[finding.severity])}
+        />
 
-            {/* Collapsed description */}
-            {!isExpanded && (
-              <p className="mt-1 text-xs text-[var(--dv-text-muted)] line-clamp-1">
-                {finding.description}
-              </p>
-            )}
-          </div>
+        {/* Title */}
+        <span className="flex-1 min-w-0 text-xs text-[var(--dv-text-primary)] truncate">
+          {finding.title}
+        </span>
 
-          {/* Expand indicator */}
-          {isExpanded ? (
-            <ChevronDown className="size-4 text-[var(--dv-text-muted)] flex-shrink-0" />
-          ) : (
-            <ChevronRight className="size-4 text-[var(--dv-text-muted)] flex-shrink-0" />
+        {/* Severity label */}
+        <span className={cn("flex-shrink-0 text-[10px] capitalize", severityColors[finding.severity])}>
+          {finding.severity}
+        </span>
+
+        {/* Expand chevron */}
+        <ChevronRight
+          className={cn(
+            "size-3 flex-shrink-0 text-[var(--dv-text-muted)] transition-transform duration-200",
+            isExpanded && "rotate-90"
           )}
-        </div>
+        />
+      </div>
 
-        {/* Expanded content */}
-        {isExpanded && (
-          <div className="mt-3 pl-6 space-y-3 fade-in">
-            {/* Full description */}
-            <p className="text-xs text-[var(--dv-text-secondary)] leading-relaxed">
+      {/* Expandable detail — CSS grid transition for smooth height */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="px-2.5 pb-2.5 pt-0.5 space-y-2">
+            {/* Description */}
+            <p className="text-[11px] leading-relaxed text-[var(--dv-text-secondary)] pl-[22px]">
               {finding.description}
             </p>
 
-            {/* Document references */}
-            {finding.documentRefs.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {finding.documentRefs.map((ref) => (
-                  <span
-                    key={ref}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] bg-[var(--dv-bg-active)] text-[var(--dv-cyan)]"
-                  >
-                    <FileText className="size-2.5" />
-                    {ref}
-                  </span>
-                ))}
-              </div>
-            )}
+            {/* Footer: doc refs + confidence */}
+            <div className="flex items-center gap-2 pl-[22px] flex-wrap">
+              {finding.documentRefs.map((ref) => (
+                <span
+                  key={ref}
+                  className="inline-flex items-center gap-1 text-[10px] text-[var(--dv-text-muted)]"
+                >
+                  <FileText className="size-2.5" />
+                  {ref}
+                </span>
+              ))}
 
-            {/* Confidence */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-[var(--dv-text-muted)]">
-                Confidence:
-              </span>
-              <span className="text-[10px] font-mono text-[var(--dv-text-secondary)]">
+              {finding.documentRefs.length > 0 && (
+                <span className="text-[var(--dv-border-default)]">·</span>
+              )}
+
+              <span className="text-[10px] font-mono text-[var(--dv-text-muted)]">
                 {Math.round(finding.confidence * 100)}%
               </span>
             </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
