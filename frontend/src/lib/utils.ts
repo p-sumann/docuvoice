@@ -91,7 +91,18 @@ export function getStatusColor(status: DocumentStatus): string {
   return colors[status];
 }
 
-export function getOrbLabel(state: OrbState, toolName?: string | null): string {
+export function getOrbLabel(
+  state: OrbState,
+  toolName?: string | null,
+  connectPhase?: import("@/types/voice").ConnectPhase,
+): string {
+  if (state === "connecting" && connectPhase) {
+    const phaseLabels: Record<string, string> = {
+      requesting: "Requesting access...",
+      connecting: "Connecting to room...",
+    };
+    return phaseLabels[connectPhase] ?? "Connecting...";
+  }
   const labels: Record<OrbState, string> = {
     idle: "Click or press Space",
     connecting: "Connecting...",
