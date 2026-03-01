@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { PanelRightOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,16 +16,26 @@ import { PanelResizer } from "@/components/layout/panel-resizer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/hooks/use-workspace";
 import { useVoiceSession } from "@/hooks/use-voice-session";
-import { MOCK_SUGGESTED_QUESTIONS } from "@/lib/mock-data";
+import { fetchSuggestedQuestions } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import type { SuggestedQuestion } from "@/types/voice";
 
 export default function WorkspacePage() {
   const params = useParams<{ workspaceId: string }>();
   const { workspace, documents, findings, extractedFields, isLoading } =
     useWorkspace(params.workspaceId);
-  const voiceSession = useVoiceSession();
+  const voiceSession = useVoiceSession({
+    workspaceId: params.workspaceId,
+    workspaceName: workspace?.name,
+    domain: workspace?.domain,
+  });
 
   const [docPanelWidth, setDocPanelWidth] = useState(40); // percentage
+  const [suggestedQuestions, setSuggestedQuestions] = useState<SuggestedQuestion[]>([]);
+
+  useEffect(() => {
+    fetchSuggestedQuestions(params.workspaceId).then(setSuggestedQuestions);
+  }, [params.workspaceId]);
 
   const handleResize = useCallback((deltaX: number) => {
     setDocPanelWidth((prev) => {
@@ -65,13 +75,18 @@ export default function WorkspacePage() {
 
       {/* Main 3-panel layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Center panel: Voice + Transcript */}
-        <div
-          className="flex flex-col flex-1 min-w-0"
-          style={{ flex: `0 0 ${100 - docPanelWidth}%` }}
-        >
+        {/* Center panel: Voice + Transcript — flex-1 fills remaining space */}
+        <div className="flex flex-col flex-1 min-w-0">
+
           {/* Voice Orb */}
-          <VoiceSessionController />
+          <VoiceSessionController
+            orbState={voiceSession.orbState}
+            currentToolCall={voiceSession.currentToolCall}
+            errorMessage={voiceSession.errorMessage}
+            connectPhase={voiceSession.connectPhase}
+            audioLevel={voiceSession.audioLevel}
+            onToggle={voiceSession.toggle}
+          />
 
           {/* Transcript */}
           <VoiceTranscript
@@ -83,7 +98,7 @@ export default function WorkspacePage() {
 
           {/* Suggested Questions */}
           <SuggestedQuestions
-            questions={MOCK_SUGGESTED_QUESTIONS}
+            questions={suggestedQuestions}
             onSelect={(q) => {
               voiceSession.toggle();
             }}
@@ -98,8 +113,8 @@ export default function WorkspacePage() {
 
         {/* Document panel - desktop */}
         <div
-          className={cn("hidden lg:flex")}
-          style={{ flex: `0 0 ${docPanelWidth}%` }}
+          className="hidden lg:flex min-w-0 overflow-hidden"
+          style={{ flex: `0 0 ${docPanelWidth}%`, maxWidth: `${docPanelWidth}%` }}
         >
           <DocumentPanel
             documents={documents}

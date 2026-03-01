@@ -34,7 +34,7 @@ export default function WorkspaceSettingsPage() {
   };
 
   return (
-    <div className="page-enter p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
+    <div className="page-enter h-full overflow-auto p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
       <h1 className="text-xl font-bold text-[var(--dv-text-primary)]">
         Workspace Settings
       </h1>

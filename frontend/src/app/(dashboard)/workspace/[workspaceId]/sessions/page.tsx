@@ -33,7 +33,7 @@ export default function SessionHistoryPage() {
   );
 
   return (
-    <div className="page-enter p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="page-enter h-full overflow-auto p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-[var(--dv-text-primary)]">
           Session History
