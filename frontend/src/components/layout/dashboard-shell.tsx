@@ -9,11 +9,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
-      <SidebarInset>
+      <SidebarInset className="overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-auto">
+        <div className="flex-1 min-h-0 overflow-hidden">
           {children}
-        </main>
+        </div>
       </SidebarInset>
       <CommandPalette />
     </SidebarProvider>

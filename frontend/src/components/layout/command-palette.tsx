@@ -20,11 +20,12 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { MOCK_WORKSPACES } from "@/lib/mock-data";
+import { useWorkspaceStore } from "@/stores/workspace-store";
 
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
+  const { workspaces } = useWorkspaceStore();
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -53,7 +54,7 @@ export function CommandPalette() {
         <CommandEmpty>No results found.</CommandEmpty>
 
         <CommandGroup heading="Workspaces">
-          {MOCK_WORKSPACES.map((ws) => (
+          {workspaces.map((ws) => (
             <CommandItem
               key={ws.id}
               onSelect={() => navigate(`/workspace/${ws.id}`)}
