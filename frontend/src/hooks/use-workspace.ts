@@ -3,8 +3,14 @@
 import { useEffect } from "react";
 
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import { fetchWorkspaces, fetchWorkspace, fetchDocuments, fetchFindings } from "@/lib/api";
-import { MOCK_EXTRACTED_FIELDS } from "@/lib/mock-data";
+import {
+  fetchWorkspaces,
+  fetchWorkspace,
+  fetchDocuments,
+  fetchFindings,
+  fetchExtractedFields,
+  prefetchWorkspaceContext,
+} from "@/lib/api";
 
 export function useWorkspaces() {
   const { workspaces, isLoading, setWorkspaces, setLoading } =
@@ -36,23 +42,34 @@ export function useWorkspace(workspaceId: string) {
   } = useWorkspaceStore();
 
   useEffect(() => {
-    if (activeWorkspace?.id === workspaceId) return;
+    // Skip fetch only if workspace is already loaded AND in ready state.
+    // If workspace is still in "setup" status, refetch to get updated data
+    // after preparation completes (findings, extracted fields, etc.).
+    const isCached = activeWorkspace?.id === workspaceId;
+    const isReady = activeWorkspace?.status === "active" || activeWorkspace?.status === "ready";
+    if (isCached && isReady) return;
+
     setLoading(true);
+    // Pre-warm agent context cache so it's ready when the voice session starts
+    prefetchWorkspaceContext(workspaceId);
+
     Promise.all([
       fetchWorkspace(workspaceId),
       fetchDocuments(workspaceId),
       fetchFindings(workspaceId),
+      fetchExtractedFields(workspaceId),
     ])
-      .then(([workspace, docs, finds]) => {
+      .then(([workspace, docs, finds, fields]) => {
         setActiveWorkspace(workspace);
         setDocuments(docs);
         setFindings(finds);
-        setExtractedFields(MOCK_EXTRACTED_FIELDS);
+        setExtractedFields(fields);
       })
       .finally(() => setLoading(false));
   }, [
     workspaceId,
     activeWorkspace?.id,
+    activeWorkspace?.status,
     setActiveWorkspace,
     setDocuments,
     setFindings,
