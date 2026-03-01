@@ -1,4 +1,4 @@
-export type WorkspaceStatus = "active" | "setup" | "archived" | "error";
+export type WorkspaceStatus = "active" | "setup" | "ready" | "archived" | "error";
 
 export type DomainType =
   | "insurance_claims"
