@@ -1,0 +1,42 @@
+novasonic-hackathon.sumanpaudel.me {
+    # Frontend — Next.js
+    handle {
+        reverse_proxy frontend:3000
+    }
+
+    # Backend API
+    handle /api/* {
+        reverse_proxy backend:8000
+    }
+
+    # WebSocket for real-time updates
+    handle /api/v1/ws/* {
+        reverse_proxy backend:8000
+    }
+
+    # Health check endpoint (useful for monitoring)
+    handle /health {
+        reverse_proxy backend:8000 {
+            rewrite /api/v1/health
+        }
+    }
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        X-XSS-Protection "1; mode=block"
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        Permissions-Policy "camera=(), microphone=(self), geolocation=()"
+    }
+
+    # Compression
+    encode gzip zstd
+
+    # Logging
+    log {
+        output stdout
+        format console
+    }
+}
