@@ -19,7 +19,7 @@ export default function NewWorkspacePage() {
 
   const handleComplete = async (payload: WorkspaceCreatePayload) => {
     try {
-      const workspace = await createWorkspace(payload.name, payload.domain);
+      const workspace = await createWorkspace(payload.name, payload.domain ?? "auto");
 
       await Promise.all(
         payload.documents.map((file) =>

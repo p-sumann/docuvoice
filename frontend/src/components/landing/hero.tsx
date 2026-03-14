@@ -4,14 +4,14 @@ import Link from "next/link";
 import { ArrowRight, Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { LandingOrb } from "@/components/landing/landing-orb";
+import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
 
 export function Hero() {
   return (
-    <section className="relative flex flex-col items-center text-center px-6 pt-28 pb-16 lg:pt-36 lg:pb-24">
-      {/* Animated gooey orb */}
-      <div className="relative mb-6">
-        <LandingOrb />
+    <section className="relative flex flex-col items-center text-center px-6 pt-12 pb-12 lg:pt-14 lg:pb-16">
+      {/* Aura visualizer */}
+      <div className="relative mb-4">
+        <AgentAudioVisualizerAura size="lg" state="listening" />
       </div>
 
       {/* Headline */}

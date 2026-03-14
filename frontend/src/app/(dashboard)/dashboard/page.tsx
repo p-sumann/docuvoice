@@ -53,9 +53,9 @@ function StatsCards() {
               <stat.icon className={`size-5 ${stat.color}`} />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[var(--dv-text-primary)]">
+              <div className="text-2xl font-bold text-[var(--dv-text-primary)]">
                 {stats ? stat.value : <Skeleton className="h-7 w-10 bg-[var(--dv-bg-active)]" />}
-              </p>
+              </div>
               <p className="text-xs text-[var(--dv-text-muted)]">
                 {stat.label}
               </p>

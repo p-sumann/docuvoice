@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 
@@ -16,7 +17,9 @@ interface TopbarProps {
 
 export function Topbar({ title = "Home" }: TopbarProps) {
   const { theme, setTheme } = useTheme();
-  const isDark = theme === "dark";
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const isDark = mounted ? theme === "dark" : false;
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-2 px-4">
