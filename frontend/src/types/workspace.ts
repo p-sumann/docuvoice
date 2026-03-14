@@ -1,22 +1,22 @@
 export type WorkspaceStatus = "active" | "setup" | "ready" | "archived" | "error";
 
 export type DomainType =
+  | "auto"
   | "insurance_claims"
   | "legal_contracts"
-  | "financial_dd"
-  | "custom";
+  | "financial_dd";
 
-export type DocumentStatus = "uploading" | "processing" | "ready" | "error";
+export type DocumentStatus = "uploading" | "processing" | "ready" | "error" | "rejected";
 
 export type DocumentType =
+  | "auto"
   | "fnol"
   | "policy"
   | "medical_bill"
   | "police_report"
   | "contract"
   | "nda"
-  | "balance_sheet"
-  | "custom";
+  | "balance_sheet";
 
 export type SessionChannel = "web" | "phone";
 
@@ -46,6 +46,7 @@ export interface Document {
   sizeTokens: number;
   extractedFields: ExtractedField[];
   processingError: string | null;
+  rejectionReason: string | null;
   isReferenced: boolean;
   createdAt: string;
 }

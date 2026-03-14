@@ -111,14 +111,4 @@ export const DOMAIN_PLUGINS: DomainPlugin[] = [
     fieldCount: 38,
     isAvailable: true,
   },
-  {
-    id: "custom",
-    name: "Custom",
-    description:
-      "Define your own document types, extraction rules, and analysis workflows for any domain.",
-    icon: "Wrench",
-    documentTypes: ["Custom Document"],
-    fieldCount: 0,
-    isAvailable: true,
-  },
 ];

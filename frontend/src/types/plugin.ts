@@ -20,7 +20,6 @@ export interface WizardStep {
 
 export interface WorkspaceCreatePayload {
   name: string;
-  domain: DomainType;
+  domain?: DomainType;
   documents: File[];
-  plugins: string[];
 }
