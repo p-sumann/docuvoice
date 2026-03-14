@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, Scale, TrendingUp, Wrench } from "lucide-react";
+import { ClipboardCheck, Scale, TrendingUp, Wrench, Sparkles } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,14 +14,16 @@ interface WorkspaceCardProps {
   className?: string;
 }
 
-const domainIcons: Record<DomainType, React.ElementType> = {
+const domainIcons: Record<string, React.ElementType> = {
+  auto: Sparkles,
   insurance_claims: ClipboardCheck,
   legal_contracts: Scale,
   financial_dd: TrendingUp,
   custom: Wrench,
 };
 
-const domainLabels: Record<DomainType, string> = {
+const domainLabels: Record<string, string> = {
+  auto: "Auto-detected",
   insurance_claims: "Insurance",
   legal_contracts: "Legal",
   financial_dd: "Financial",
@@ -40,7 +42,7 @@ export function WorkspaceCard({
   onClick,
   className,
 }: WorkspaceCardProps) {
-  const DomainIcon = domainIcons[workspace.domain];
+  const DomainIcon = domainIcons[workspace.domain] ?? Sparkles;
 
   return (
     <Card

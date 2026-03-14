@@ -16,6 +16,7 @@ interface WorkspaceTopBarProps {
 }
 
 const domainLabels: Record<string, string> = {
+  auto: "Auto-detected",
   insurance_claims: "Insurance Claims",
   legal_contracts: "Legal Contracts",
   financial_dd: "Financial DD",
