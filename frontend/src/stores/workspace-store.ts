@@ -22,6 +22,7 @@ interface WorkspaceStore {
   setActiveWorkspace: (workspace: Workspace | null) => void;
   setDocuments: (documents: Document[]) => void;
   addDocument: (document: Document) => void;
+  updateDocument: (docId: string, document: Document) => void;
   updateDocumentStatus: (docId: string, status: DocumentStatus) => void;
   setReferenced: (docId: string, isReferenced: boolean) => void;
   setSessions: (sessions: Session[]) => void;
@@ -45,6 +46,12 @@ export const useWorkspaceStore = create<WorkspaceStore>((set) => ({
   setDocuments: (documents) => set({ documents }),
   addDocument: (document) =>
     set((state) => ({ documents: [...state.documents, document] })),
+  updateDocument: (docId, document) =>
+    set((state) => ({
+      documents: state.documents.map((doc) =>
+        doc.id === docId ? document : doc
+      ),
+    })),
   updateDocumentStatus: (docId, status) =>
     set((state) => ({
       documents: state.documents.map((doc) =>

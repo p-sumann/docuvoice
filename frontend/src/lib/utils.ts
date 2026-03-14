@@ -2,7 +2,6 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 import type { FindingSeverity } from "@/types/finding";
-import type { OrbState } from "@/types/voice";
 import type { DocumentStatus } from "@/types/workspace";
 
 export function cn(...inputs: ClassValue[]) {
@@ -87,32 +86,9 @@ export function getStatusColor(status: DocumentStatus): string {
     processing: "text-blue-400",
     ready: "text-emerald-400",
     error: "text-red-400",
+    rejected: "text-red-400",
   };
   return colors[status];
-}
-
-export function getOrbLabel(
-  state: OrbState,
-  toolName?: string | null,
-  connectPhase?: import("@/types/voice").ConnectPhase,
-): string {
-  if (state === "connecting" && connectPhase) {
-    const phaseLabels: Record<string, string> = {
-      requesting: "Requesting access...",
-      connecting: "Connecting to room...",
-    };
-    return phaseLabels[connectPhase] ?? "Connecting...";
-  }
-  const labels: Record<OrbState, string> = {
-    idle: "Click or press Space",
-    connecting: "Connecting...",
-    listening: "Listening...",
-    speaking: "Speaking...",
-    thinking: "Analyzing...",
-    tool_call: toolName ? `Running ${toolName}...` : "Processing...",
-    error: "Connection lost",
-  };
-  return labels[state];
 }
 
 export function formatSessionTime(seconds: number): string {

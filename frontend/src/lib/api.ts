@@ -37,7 +37,7 @@ export async function fetchWorkspace(id: string): Promise<Workspace | null> {
 
 export async function createWorkspace(
   name: string,
-  domain: string
+  domain: string = "auto"
 ): Promise<Workspace> {
   const { data } = await api.post<ApiResponse<Workspace>>(
     "/api/v1/workspaces",
@@ -65,7 +65,7 @@ export async function fetchExtractedFields(
 export async function uploadDocument(
   workspaceId: string,
   file: File,
-  documentType: string = "custom"
+  documentType: string = "auto"
 ): Promise<Document> {
   const formData = new FormData();
   formData.append("file", file);
@@ -163,6 +163,7 @@ export async function updateModelConfig(
 export interface PreparationStatus {
   step: string;
   progress: number;
+  rejectedCount?: number;
 }
 
 /** Kick off the async workspace preparation pipeline (returns 202) */

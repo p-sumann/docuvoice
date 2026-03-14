@@ -2,42 +2,46 @@
 
 import { useCallback } from "react";
 
+import { uploadDocument } from "@/lib/api";
 import { useWorkspaceStore } from "@/stores/workspace-store";
-import type { Document, DocumentStatus } from "@/types/workspace";
+import type { Document } from "@/types/workspace";
 
 export function useDocuments() {
-  const { documents, addDocument, updateDocumentStatus, setReferenced } =
+  const { documents, addDocument, updateDocument, updateDocumentStatus, setReferenced } =
     useWorkspaceStore();
 
-  const simulateUpload = useCallback(
-    (file: File, workspaceId: string) => {
-      const docId = `doc-${Date.now()}`;
-      const newDoc: Document = {
-        id: docId,
+  const upload = useCallback(
+    async (file: File, workspaceId: string) => {
+      // Optimistic local entry while the real upload runs
+      const tempId = `doc-${Date.now()}`;
+      const placeholder: Document = {
+        id: tempId,
         workspaceId,
         filename: file.name,
-        documentType: "custom",
+        documentType: "auto",
         status: "uploading",
-        s3Key: `${workspaceId}/documents/${file.name}`,
+        s3Key: "",
         sizeBytes: file.size,
         sizeTokens: 0,
         extractedFields: [],
         processingError: null,
+        rejectionReason: null,
         isReferenced: false,
         createdAt: new Date().toISOString(),
       };
+      addDocument(placeholder);
 
-      addDocument(newDoc);
-
-      // Simulate upload -> processing -> ready
-      setTimeout(() => updateDocumentStatus(docId, "processing"), 2000);
-      setTimeout(() => {
-        updateDocumentStatus(docId, "ready");
-      }, 5000);
-
-      return docId;
+      try {
+        const doc = await uploadDocument(workspaceId, file);
+        // Replace placeholder with real server response
+        updateDocument(tempId, { ...doc, rejectionReason: doc.rejectionReason ?? null });
+        return doc.id;
+      } catch {
+        updateDocumentStatus(tempId, "error");
+        return tempId;
+      }
     },
-    [addDocument, updateDocumentStatus]
+    [addDocument, updateDocument, updateDocumentStatus]
   );
 
   const setDocumentReferenced = useCallback(
@@ -49,7 +53,9 @@ export function useDocuments() {
 
   return {
     documents,
-    simulateUpload,
+    upload,
+    // Keep old name as alias for backward compat
+    simulateUpload: upload,
     setDocumentReferenced,
   };
 }
