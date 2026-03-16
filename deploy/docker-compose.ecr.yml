@@ -31,10 +31,10 @@ services:
       - CORS_ORIGINS=["https://novasonic-hackathon.sumanpaudel.me"]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     networks:
       - docuvoice
     logging:
@@ -45,7 +45,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 4G
 
   frontend:
     image: 136673894316.dkr.ecr.us-east-1.amazonaws.com/docuvoice-frontend:latest

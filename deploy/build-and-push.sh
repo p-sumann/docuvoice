@@ -7,6 +7,7 @@ ACCOUNT_ID="136673894316"
 REGION="us-east-1"
 ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 TAG="${1:-latest}"
+PLATFORM="linux/amd64"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -32,7 +33,7 @@ ok "ECR login successful"
 
 # ── Build & Push Backend ─────────────────────────────────────────────────────
 info "Building backend..."
-docker build -t docuvoice-backend:"$TAG" ./backend
+docker build --platform "$PLATFORM" -t docuvoice-backend:"$TAG" ./backend
 docker tag docuvoice-backend:"$TAG" "$ECR_REGISTRY/docuvoice-backend:$TAG"
 info "Pushing backend..."
 docker push "$ECR_REGISTRY/docuvoice-backend:$TAG"
@@ -40,7 +41,7 @@ ok "Backend pushed"
 
 # ── Build & Push Frontend ────────────────────────────────────────────────────
 info "Building frontend..."
-docker build \
+docker build --platform "$PLATFORM" \
     --build-arg NEXT_PUBLIC_API_URL=https://novasonic-hackathon.sumanpaudel.me \
     --build-arg NEXT_PUBLIC_WS_URL=wss://novasonic-hackathon.sumanpaudel.me \
     -t docuvoice-frontend:"$TAG" ./frontend
@@ -51,7 +52,7 @@ ok "Frontend pushed"
 
 # ── Build & Push Agent ───────────────────────────────────────────────────────
 info "Building agent..."
-docker build -t docuvoice-agent:"$TAG" ./agents
+docker build --platform "$PLATFORM" -t docuvoice-agent:"$TAG" ./agents
 docker tag docuvoice-agent:"$TAG" "$ECR_REGISTRY/docuvoice-agent:$TAG"
 info "Pushing agent..."
 docker push "$ECR_REGISTRY/docuvoice-agent:$TAG"

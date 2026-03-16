@@ -26,17 +26,18 @@ logger = structlog.get_logger()
 @lru_cache(maxsize=1)
 def _get_bedrock_client():
     """Shared Bedrock client — reuses TCP connections across all calls."""
-    bedrock = boto3.client(
-        "bedrock-runtime",
-        region_name=settings.aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token or None,
-        config=BotoConfig(
+    kwargs: dict = {
+        "region_name": settings.aws_default_region,
+        "config": BotoConfig(
             max_pool_connections=20,
             retries={"max_attempts": 2, "mode": "adaptive"},
         ),
-    )
+    }
+    if settings.aws_access_key_id:
+        kwargs["aws_access_key_id"] = settings.aws_access_key_id
+        kwargs["aws_secret_access_key"] = settings.aws_secret_access_key
+        kwargs["aws_session_token"] = settings.aws_session_token or None
+    bedrock = boto3.client("bedrock-runtime", **kwargs)
     return instructor.from_bedrock(bedrock)
 
 # ── Pydantic models for structured LLM output ────────────────────
