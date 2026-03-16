@@ -4,7 +4,8 @@ export type DomainType =
   | "auto"
   | "insurance_claims"
   | "legal_contracts"
-  | "financial_dd";
+  | "financial_dd"
+  | "custom";
 
 export type DocumentStatus = "uploading" | "processing" | "ready" | "error" | "rejected";
 

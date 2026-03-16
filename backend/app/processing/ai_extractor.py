@@ -6,11 +6,13 @@ with regex fallback for resilience.
 
 import asyncio
 import re
+from functools import lru_cache
 from typing import Literal
 
 import boto3
 import instructor
 import structlog
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError, ReadTimeoutError
 from pydantic import BaseModel, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
@@ -19,6 +21,23 @@ from app.config import settings
 from app.models.document import ExtractedFieldModel
 
 logger = structlog.get_logger()
+
+
+@lru_cache(maxsize=1)
+def _get_bedrock_client():
+    """Shared Bedrock client — reuses TCP connections across all calls."""
+    bedrock = boto3.client(
+        "bedrock-runtime",
+        region_name=settings.aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+        aws_session_token=settings.aws_session_token or None,
+        config=BotoConfig(
+            max_pool_connections=20,
+            retries={"max_attempts": 2, "mode": "adaptive"},
+        ),
+    )
+    return instructor.from_bedrock(bedrock)
 
 # ── Pydantic models for structured LLM output ────────────────────
 
@@ -104,14 +123,7 @@ Extract comprehensively — every name, date, number, address, reference ID, and
 )
 def _extract_sync(filename: str, text: str, document_type: str) -> ExtractionResult:
     """Synchronous extraction call (runs in thread via asyncio.to_thread)."""
-    bedrock = boto3.client(
-        "bedrock-runtime",
-        region_name=settings.aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token or None,
-    )
-    client = instructor.from_bedrock(bedrock)
+    client = _get_bedrock_client()
 
     domain_desc = _DOMAIN_DESCRIPTIONS.get(document_type, _DOMAIN_DESCRIPTIONS["general"])
     system_prompt = _SYSTEM_PROMPT.format(
@@ -277,14 +289,7 @@ Write in plain language — no bullet points, no markdown. This summary will be 
 )
 def _summarize_sync(filename: str, text: str, document_type: str, fields_text: str) -> DocumentSummaryResult:
     """Synchronous summary call (runs in thread via asyncio.to_thread)."""
-    bedrock = boto3.client(
-        "bedrock-runtime",
-        region_name=settings.aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token or None,
-    )
-    client = instructor.from_bedrock(bedrock)
+    client = _get_bedrock_client()
 
     system_prompt = _SUMMARY_SYSTEM_PROMPT.format(document_type=document_type)
     truncated = text[:2000]
@@ -295,7 +300,7 @@ def _summarize_sync(filename: str, text: str, document_type: str, fields_text: s
         model=settings.bedrock_model_id,
         messages=[{"role": "user", "content": user_content}],
         response_model=DocumentSummaryResult,
-        max_tokens=256,
+        max_tokens=512,
     )
 
 

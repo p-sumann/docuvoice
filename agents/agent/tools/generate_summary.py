@@ -45,8 +45,8 @@ async def generate_summary(
 ) -> str:
     """Generate adjuster summary notes for this insurance claim.
 
-    Compiles all findings, key extracted fields, and exposure data into a structured
-    report suitable for an insurance adjuster's review.
+    Compiles findings, exposure risks, discrepancies, and key action items into a
+    structured report. Findings and recommendations come first — they're the priority.
 
     Use this when the user asks for a summary, report, or adjuster notes.
     """
@@ -55,88 +55,92 @@ async def generate_summary(
 
     fields = _extract_all_fields(memory.context_text)
     doc_count = _count_documents(memory.context_text)
-
     doc_names = _extract_document_names(memory.context_text)
 
-    # Build summary sections
     sections: list[str] = []
 
-    # Header
+    # ── Header (brief) ──
     policy = fields.get("policy_number", "Unknown")
     claimant = fields.get("claimant_name", "Unknown")
     date_of_loss = fields.get("date_of_loss", "Unknown")
     sections.append(f"ADJUSTER SUMMARY — {policy}")
-    sections.append(f"Claimant: {claimant}")
-    sections.append(f"Date of Loss: {date_of_loss}")
-    sections.append(f"Documents Reviewed: {doc_count}")
-    if doc_names:
-        sections.append(f"Sources: {', '.join(doc_names)}")
+    sections.append(f"Claimant: {claimant} | Date of Loss: {date_of_loss} | Docs: {doc_count}")
     sections.append("")
 
-    # Key Facts
-    sections.append("KEY FACTS:")
-    key_fields = [
-        "vehicle_make", "vehicle_year", "loss_location",
-        "weather_conditions", "fault_determination",
-    ]
-    for key in key_fields:
-        if key in fields:
-            label = key.replace("_", " ").title()
-            sections.append(f"  - {label}: {fields[key]}")
-    sections.append("")
+    # ── Findings FIRST — this is the main value ──
+    critical_high = [f for f in memory.findings if f.severity in ("critical", "high")]
+    medium_low = [f for f in memory.findings if f.severity not in ("critical", "high")]
 
-    # Coverage
-    sections.append("COVERAGE:")
-    coverage_fields = [
-        ("bi_limit_per_person", "BI Limit (Per Person)"),
-        ("bi_limit_per_occurrence", "BI Limit (Per Occurrence)"),
-        ("pd_limit", "PD Limit"),
-        ("deductible", "Deductible"),
-    ]
-    for key, label in coverage_fields:
-        if key in fields:
-            sections.append(f"  - {label}: {fields[key]}")
-    sections.append("")
-
-    # Medical
-    medical_total = fields.get("total_medical", fields.get("medical_total"))
-    if medical_total:
-        sections.append("MEDICAL:")
-        sections.append(f"  - Total Medical Bills: {medical_total}")
-        provider = fields.get("treatment_provider")
-        if provider:
-            sections.append(f"  - Provider: {provider}")
-        duration = fields.get("treatment_duration")
-        if duration:
-            sections.append(f"  - Treatment Duration: {duration}")
-        sections.append("")
-
-    # Findings
     if memory.findings:
-        sections.append(f"FINDINGS ({len(memory.findings)}):")
-        for f in memory.findings:
-            sections.append(f"  [{f.severity.upper()}] {f.title}")
-            sections.append(f"    {f.description}")
+        sections.append(f"{'⚠ ' if critical_high else ''}FINDINGS ({len(memory.findings)}):")
+        # Critical/high findings first
+        for f in critical_high:
+            sections.append(f"  !! [{f.severity.upper()}] {f.title}")
+            sections.append(f"     {f.description}")
             if f.document_refs:
-                sections.append(f"    Sources: {', '.join(f.document_refs)}")
+                sections.append(f"     Sources: {', '.join(f.document_refs)}")
+        for f in medium_low:
+            sections.append(f"  [{f.severity.upper()}] {f.title}")
+            sections.append(f"     {f.description}")
+            if f.document_refs:
+                sections.append(f"     Sources: {', '.join(f.document_refs)}")
+        sections.append("")
+    else:
+        sections.append("FINDINGS: None detected.")
         sections.append("")
 
-    # Recommendations
-    sections.append("RECOMMENDATIONS:")
-    if any(f.severity in ("critical", "high") for f in memory.findings):
-        sections.append("  - PRIORITY: Resolve critical/high findings before proceeding")
+    # ── Recommendations (action items) ──
+    sections.append("ACTION ITEMS:")
+    if critical_high:
+        sections.append("  !! PRIORITY: Resolve critical/high findings before proceeding")
     if any(f.type == "discrepancy" for f in memory.findings):
         sections.append("  - Contact claimant to clarify document discrepancies")
     if any(f.type == "exposure" for f in memory.findings):
         sections.append("  - Review reserve adequacy given exposure level")
+    if any(f.type == "missing" for f in memory.findings):
+        sections.append("  - Request missing documentation to complete the file")
     if not memory.findings:
-        sections.append("  - No significant issues detected. Proceed with standard processing.")
+        sections.append("  - No significant issues. Proceed with standard processing.")
+    sections.append("")
+
+    # ── Exposure snapshot ──
+    medical_total = fields.get("total_medical", fields.get("medical_total"))
+    bi_limit = fields.get("bi_limit_per_person")
+    if medical_total or bi_limit:
+        sections.append("EXPOSURE:")
+        if medical_total:
+            sections.append(f"  - Medical Total: {medical_total}")
+        if bi_limit:
+            sections.append(f"  - BI Limit (Per Person): {bi_limit}")
+        if medical_total and bi_limit:
+            try:
+                med_val = float(medical_total.replace("$", "").replace(",", ""))
+                bi_val = float(bi_limit.replace("$", "").replace(",", ""))
+                ratio = med_val / bi_val * 100 if bi_val > 0 else 0
+                sections.append(f"  - Utilization: {ratio:.0f}% of BI limit")
+            except (ValueError, ZeroDivisionError):
+                pass
+        sections.append("")
+
+    # ── Claim snapshot (compact, not the main event) ──
+    snapshot_items = []
+    for key in ["vehicle_make", "vehicle_year", "loss_location", "fault_determination"]:
+        if key in fields:
+            snapshot_items.append(f"{key.replace('_', ' ').title()}: {fields[key]}")
+    if snapshot_items:
+        sections.append("CLAIM SNAPSHOT: " + " | ".join(snapshot_items))
+        sections.append("")
+
+    # ── Sources ──
+    if doc_names:
+        sections.append(f"SOURCES: {', '.join(doc_names)}")
 
     summary_text = "\n".join(sections)
 
     return json.dumps({
         "summary": summary_text,
         "finding_count": len(memory.findings),
+        "critical_count": len(critical_high),
         "document_count": doc_count,
         "key_fields_extracted": len(fields),
     })

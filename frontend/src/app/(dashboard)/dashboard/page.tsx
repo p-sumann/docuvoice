@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FolderOpen, Mic, Clock } from "lucide-react";
 
@@ -8,17 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { WorkspaceGrid } from "@/components/workspace/workspace-grid";
 import { Badge } from "@/components/ui/badge";
 import { useWorkspaces } from "@/hooks/use-workspace";
+import { useDashboardStats, useRecentSessions } from "@/hooks/use-dashboard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { fetchWorkspaceStats, fetchRecentSessions } from "@/lib/api";
 import { formatDuration, formatTimestamp } from "@/lib/utils";
-import type { WorkspaceStats, Session } from "@/types/workspace";
 
 function StatsCards() {
-  const [stats, setStats] = useState<WorkspaceStats | null>(null);
-
-  useEffect(() => {
-    fetchWorkspaceStats().then(setStats).catch(() => {});
-  }, []);
+  const stats = useDashboardStats();
 
   const items = [
     {
@@ -54,7 +48,7 @@ function StatsCards() {
             </div>
             <div>
               <div className="text-2xl font-bold text-[var(--dv-text-primary)]">
-                {stats ? stat.value : <Skeleton className="h-7 w-10 bg-[var(--dv-bg-active)]" />}
+                {stat.value}
               </div>
               <p className="text-xs text-[var(--dv-text-muted)]">
                 {stat.label}
@@ -68,14 +62,7 @@ function StatsCards() {
 }
 
 function RecentSessions() {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchRecentSessions(3)
-      .then(setSessions)
-      .finally(() => setIsLoading(false));
-  }, []);
+  const { sessions, isLoading } = useRecentSessions(3);
 
   if (isLoading) {
     return (
@@ -109,7 +96,7 @@ function RecentSessions() {
             {session.channel === "web" ? (
               <Mic className="size-4 text-[var(--dv-wine)]" />
             ) : (
-              <span className="text-xs">📞</span>
+              <span className="text-xs">&#128222;</span>
             )}
           </div>
           <div className="flex-1 min-w-0">

@@ -5,13 +5,9 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Mic,
-  Search,
-  Clock,
-  Settings,
-  Settings2,
   AudioWaveform,
   LogOut,
-  ChevronsLeft,
+  Settings,
 } from "lucide-react";
 
 import {
@@ -25,7 +21,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -49,9 +44,6 @@ const globalNavItems = [
 
 const workspaceNavItems = [
   { label: "Voice Session", icon: Mic, path: "" },
-  { label: "Session History", icon: Clock, path: "/sessions" },
-  { label: "Findings", icon: Search, path: "/findings" },
-  { label: "Workspace Settings", icon: Settings2, path: "/settings" },
 ];
 
 const demoUser = {
@@ -62,36 +54,12 @@ const demoUser = {
 export function AppSidebar() {
   const pathname = usePathname();
   const workspaceId = extractWorkspaceId(pathname);
-  const { toggleSidebar, open } = useSidebar();
 
   return (
     <Sidebar
       collapsible="icon"
       className="border-none"
     >
-      {/* Edge collapse toggle — floats at the sidebar right edge */}
-      <button
-        onClick={toggleSidebar}
-        aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
-        className={cn(
-          "absolute top-6 -right-3 z-50",
-          "flex items-center justify-center",
-          "size-6 rounded-full",
-          "bg-[var(--dv-bg-elevated)] border border-[var(--dv-border-default)]",
-          "text-[var(--dv-text-muted)] hover:text-[var(--dv-text-primary)]",
-          "shadow-sm cursor-pointer",
-          "opacity-0 transition-opacity duration-200",
-          "group-hover:opacity-100",
-        )}
-      >
-        <ChevronsLeft
-          className={cn(
-            "size-3.5 transition-transform duration-200",
-            !open && "rotate-180",
-          )}
-        />
-      </button>
-
       {/* Logo */}
       <SidebarHeader className="p-3">
         <SidebarMenu>
@@ -175,26 +143,6 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-
-        {/* Global Settings */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/settings"}
-                  tooltip="Settings"
-                >
-                  <Link href="/settings">
-                    <Settings className="size-4" />
-                    <span>Settings</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       {/* User footer */}
@@ -223,7 +171,10 @@ export function AppSidebar() {
                 className="w-48 bg-[var(--dv-bg-elevated)] border-[var(--dv-border-default)]"
               >
                 <DropdownMenuItem asChild>
-                  <Link href="/settings">Settings</Link>
+                  <Link href="/settings">
+                    <Settings className="mr-2 size-4" />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-red-400">

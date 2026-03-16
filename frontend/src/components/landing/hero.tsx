@@ -4,14 +4,14 @@ import Link from "next/link";
 import { ArrowRight, Github } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
+import { Orb } from "@/components/landing/orb";
 
 export function Hero() {
   return (
     <section className="relative flex flex-col items-center text-center px-6 pt-12 pb-12 lg:pt-14 lg:pb-16">
-      {/* Aura visualizer */}
+      {/* Orb */}
       <div className="relative mb-4">
-        <AgentAudioVisualizerAura size="lg" state="listening" />
+        <Orb />
       </div>
 
       {/* Headline */}

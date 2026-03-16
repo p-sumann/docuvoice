@@ -33,7 +33,7 @@ class AgentSettings(BaseSettings):
     )
 
     # Limits
-    max_context_tokens: int = 200_000
+    max_context_tokens: int = 4_000
     max_tool_steps: int = 5
 
     # Backend API (for MVP context loading when S3 not available)

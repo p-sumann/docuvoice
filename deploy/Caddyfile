@@ -1,16 +1,11 @@
 novasonic-hackathon.sumanpaudel.me {
-    # Frontend — Next.js
-    handle {
-        reverse_proxy frontend:3000
+    # WebSocket for real-time updates
+    handle /api/v1/ws/* {
+        reverse_proxy backend:8000
     }
 
     # Backend API
     handle /api/* {
-        reverse_proxy backend:8000
-    }
-
-    # WebSocket for real-time updates
-    handle /api/v1/ws/* {
         reverse_proxy backend:8000
     }
 
@@ -19,6 +14,11 @@ novasonic-hackathon.sumanpaudel.me {
         reverse_proxy backend:8000 {
             rewrite /api/v1/health
         }
+    }
+
+    # Frontend — Next.js (catch-all, must be last)
+    handle {
+        reverse_proxy frontend:3000
     }
 
     # Security headers

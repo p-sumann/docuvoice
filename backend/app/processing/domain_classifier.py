@@ -5,16 +5,35 @@ before running the expensive extraction pipeline.
 """
 
 import asyncio
+from functools import lru_cache
 from typing import Literal
 
 import boto3
 import instructor
 import structlog
+from botocore.config import Config as BotoConfig
 from botocore.exceptions import ClientError, ReadTimeoutError
 from pydantic import BaseModel, Field
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.config import settings
+
+
+@lru_cache(maxsize=1)
+def _get_lite_client():
+    """Shared Nova Lite Bedrock client for classification."""
+    bedrock = boto3.client(
+        "bedrock-runtime",
+        region_name=settings.aws_default_region,
+        aws_access_key_id=settings.aws_access_key_id,
+        aws_secret_access_key=settings.aws_secret_access_key,
+        aws_session_token=settings.aws_session_token or None,
+        config=BotoConfig(
+            max_pool_connections=10,
+            retries={"max_attempts": 2, "mode": "adaptive"},
+        ),
+    )
+    return instructor.from_bedrock(bedrock)
 
 logger = structlog.get_logger()
 
@@ -66,13 +85,14 @@ _CLASSIFY_PROMPT = """You are a document classifier. Determine if the following 
 DOMAIN: {domain}
 DOMAIN DESCRIPTION: {domain_description}
 
-Analyze the first portion of the document and decide:
+Analyze the document excerpt and decide:
 1. Does this document belong to the specified domain?
 2. What category does this document actually fall into?
 3. How confident are you?
 
-Be strict — a random PDF (e.g. a recipe, a resume, a textbook chapter) should NOT pass as a valid domain document.
-Only mark belongs_to_domain=true if the content is clearly relevant to the domain described above.
+Give the document the benefit of the doubt if it's plausibly related to the domain.
+Only reject (belongs_to_domain=false) if you are highly confident the document is completely unrelated — e.g. a recipe, resume, or textbook chapter.
+If the document could reasonably be part of a claims file, mark it as belonging to the domain.
 
 --- DOCUMENT EXCERPT ---
 {text_excerpt}"""
@@ -85,14 +105,7 @@ Only mark belongs_to_domain=true if the content is clearly relevant to the domai
 )
 def _classify_sync(text_excerpt: str, domain: str) -> ClassificationResult:
     """Synchronous classification call using Nova Lite."""
-    bedrock = boto3.client(
-        "bedrock-runtime",
-        region_name=settings.aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token or None,
-    )
-    client = instructor.from_bedrock(bedrock)
+    client = _get_lite_client()
 
     domain_desc = _DOMAIN_KEYWORDS.get(domain, f"General domain: {domain}")
     prompt = _CLASSIFY_PROMPT.format(
@@ -114,7 +127,7 @@ async def classify_document(text: str, domain: str) -> ClassificationResult:
 
     Uses only the first 1500 chars for speed — this is a gate, not deep analysis.
     """
-    excerpt = text[:1500].strip()
+    excerpt = text[:3000].strip()
     if not excerpt:
         return ClassificationResult(
             belongs_to_domain=False,

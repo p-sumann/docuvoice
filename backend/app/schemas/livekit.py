@@ -11,3 +11,9 @@ class LiveKitTokenRequest(CamelCaseModel):
 class LiveKitTokenResponse(CamelCaseModel):
     token: str
     server_url: str
+
+
+class LiveKitDispatchRequest(CamelCaseModel):
+    workspace_id: str
+    workspace_name: str = ""
+    domain: str = "insurance_claims"

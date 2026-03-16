@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -28,6 +29,19 @@ class WorkspaceService:
         self._session_repo = session_repo
         self._document_service = document_service
         self._finding_repo = finding_repo
+
+    async def delete_workspace(self, workspace_id: str) -> None:
+        """Delete a single workspace and all associated data."""
+        await self._workspace_repo.delete(workspace_id)
+        logger.info("workspace_deleted", workspace_id=workspace_id)
+
+    async def delete_all_workspaces(self) -> int:
+        """Delete all workspaces. Returns count of deleted workspaces."""
+        workspaces = await self._workspace_repo.list_all()
+        for ws in workspaces:
+            await self._workspace_repo.delete(ws.id)
+        logger.info("all_workspaces_deleted", count=len(workspaces))
+        return len(workspaces)
 
     async def list_workspaces(self) -> list[WorkspaceModel]:
         return await self._workspace_repo.list_all()
@@ -111,75 +125,58 @@ class WorkspaceService:
         ws = await self._workspace_repo.get_by_id(workspace_id)
         domain = ws.domain if ws else "general"
 
-        # ── Step 1: Extract text from all documents ──────────────────
+        # ── Step 1: Extract text from all documents (parallel) ────────
         _preparation_state[workspace_id] = {"step": "extracting_text", "progress": 0}
 
         docs = await self._document_service.list_by_workspace(workspace_id)
         total = len(docs) if docs else 1
+        extracted_count = 0
 
-        for i, doc in enumerate(docs):
+        async def _extract_one(doc):
+            nonlocal extracted_count
             logger.info("extracting_text", doc_id=doc.id, filename=doc.filename)
-            await self._document_service.extract_text(doc.id)
-            progress = int(((i + 1) / total) * 100)
+            result = await self._document_service.extract_text_from_doc(doc)
+            extracted_count += 1
             _preparation_state[workspace_id] = {
                 "step": "extracting_text",
-                "progress": progress,
+                "progress": int((extracted_count / total) * 100),
             }
+            return result
 
-        # ── Step 2: Domain validation (Nova Lite, batches of 4) ──────
-        # Skip classification for generic domains — they accept anything
-        _SKIP_CLASSIFICATION_DOMAINS = {"general"}
+        docs = await asyncio.gather(*(_extract_one(d) for d in docs))
+        # Filter out None results
+        docs = [d for d in docs if d is not None]
 
+        # ── Step 2: Domain validation (Nova Lite) ─────────────────────
+        _SKIP_CLASSIFICATION_DOMAINS = {"general", "auto"}
         rejected_ids: set[str] = set()
 
         if domain not in _SKIP_CLASSIFICATION_DOMAINS:
             _preparation_state[workspace_id] = {"step": "validating_documents", "progress": 0}
 
-            # Re-fetch docs to get raw_text populated from step 1
-            docs = await self._document_service.list_by_workspace(workspace_id)
             doc_texts = [(doc.id, doc.raw_text) for doc in docs if doc.status != "error"]
-
-            classification_results = await classify_documents_batch(
-                doc_texts, domain, batch_size=4,
-            )
+            classification_results = await classify_documents_batch(doc_texts, domain, batch_size=4)
 
             for doc_id, result in classification_results:
-                if not result.belongs_to_domain and result.confidence >= 0.7:
+                if not result.belongs_to_domain and result.confidence >= 0.85:
                     rejected_ids.add(doc_id)
                     await self._document_service.reject_document(
                         doc_id,
                         reason=f"Not relevant to {domain} domain. "
                         f"Detected as: {result.detected_category}. {result.reason}",
                     )
-                    logger.info(
-                        "document_rejected",
-                        doc_id=doc_id,
-                        detected=result.detected_category,
-                        confidence=result.confidence,
-                    )
+                    logger.info("document_rejected", doc_id=doc_id, detected=result.detected_category, confidence=result.confidence)
 
-            _preparation_state[workspace_id] = {
-                "step": "validating_documents",
-                "progress": 100,
-                "rejected_count": len(rejected_ids),
-            }
+            _preparation_state[workspace_id] = {"step": "validating_documents", "progress": 100, "rejected_count": len(rejected_ids)}
         else:
-            logger.info(
-                "skipping_domain_classification",
-                workspace_id=workspace_id,
-                domain=domain,
-            )
-            # Re-fetch docs for next step
-            docs = await self._document_service.list_by_workspace(workspace_id)
+            logger.info("skipping_domain_classification", workspace_id=workspace_id, domain=domain)
 
         n_rejected = len(rejected_ids)
         valid_docs = [d for d in docs if d.id not in rejected_ids and d.status != "error"]
 
         if not valid_docs:
             logger.warning("no_valid_documents", workspace_id=workspace_id)
-            _preparation_state[workspace_id] = {
-                "step": "all_rejected", "progress": 100, "rejected_count": n_rejected,
-            }
+            _preparation_state[workspace_id] = {"step": "all_rejected", "progress": 100, "rejected_count": n_rejected}
             if ws:
                 ws.status = "setup"
                 ws.document_count = 0
@@ -188,35 +185,36 @@ class WorkspaceService:
                 await self._workspace_repo.update(ws)
             return
 
-        # ── Step 3: AI field extraction for valid documents ──────────
-        _preparation_state[workspace_id] = {
-            "step": "extracting_fields", "progress": 0, "rejected_count": n_rejected,
-        }
+        # ── Step 3: AI field extraction (parallel, no DB re-reads) ────
+        _preparation_state[workspace_id] = {"step": "extracting_fields", "progress": 0, "rejected_count": n_rejected}
+        fields_done = 0
+        total_valid = len(valid_docs)
 
-        for i, doc in enumerate(valid_docs):
+        async def _extract_fields_one(doc):
+            nonlocal fields_done
             logger.info("extracting_fields", doc_id=doc.id, filename=doc.filename)
-            await self._document_service.extract_fields(doc.id)
-            progress = int(((i + 1) / len(valid_docs)) * 100)
+            result = await self._document_service.extract_fields_from_doc(doc)
+            fields_done += 1
             _preparation_state[workspace_id] = {
                 "step": "extracting_fields",
-                "progress": progress,
+                "progress": int((fields_done / total_valid) * 100),
                 "rejected_count": n_rejected,
             }
+            return result
 
-        # ── Step 4: Generate cross-document findings ─────────────────
-        _preparation_state[workspace_id] = {
-            "step": "generating_findings", "progress": 0, "rejected_count": n_rejected,
-        }
+        ready_docs = await asyncio.gather(*(_extract_fields_one(d) for d in valid_docs))
+        ready_docs = [d for d in ready_docs if d is not None and d.status == "ready"]
 
-        processed_docs = await self._document_service.list_by_workspace(workspace_id)
-        # Only include ready docs for findings
-        ready_docs = [d for d in processed_docs if d.status == "ready"]
+        # ── Step 4: Generate cross-document findings ──────────────────
+        _preparation_state[workspace_id] = {"step": "generating_findings", "progress": 0, "rejected_count": n_rejected}
 
         finding_items = await generate_findings(ready_docs, domain)
 
+        # Persist findings in parallel
         if self._finding_repo and finding_items:
             now = datetime.now(timezone.utc).isoformat()
-            for item in finding_items:
+
+            async def _save_finding(item):
                 finding = FindingModel(
                     id=f"find-{uuid4().hex[:8]}",
                     session_id="preparation",
@@ -232,20 +230,13 @@ class WorkspaceService:
                 )
                 await self._finding_repo.create(finding)
 
-            logger.info(
-                "findings_persisted",
-                workspace_id=workspace_id,
-                count=len(finding_items),
-            )
+            await asyncio.gather(*(_save_finding(f) for f in finding_items))
+            logger.info("findings_persisted", workspace_id=workspace_id, count=len(finding_items))
 
-        _preparation_state[workspace_id] = {
-            "step": "generating_findings", "progress": 100, "rejected_count": n_rejected,
-        }
+        _preparation_state[workspace_id] = {"step": "generating_findings", "progress": 100, "rejected_count": n_rejected}
 
-        # ── Step 5: Finalize ─────────────────────────────────────────
-        _preparation_state[workspace_id] = {
-            "step": "finalizing", "progress": 50, "rejected_count": n_rejected,
-        }
+        # ── Step 5: Finalize ──────────────────────────────────────────
+        _preparation_state[workspace_id] = {"step": "finalizing", "progress": 50, "rejected_count": n_rejected}
 
         if ws:
             ws.status = "ready"
@@ -254,9 +245,7 @@ class WorkspaceService:
             ws.updated_at = datetime.now(timezone.utc).isoformat()
             await self._workspace_repo.update(ws)
 
-        _preparation_state[workspace_id] = {
-            "step": "complete", "progress": 100, "rejected_count": n_rejected,
-        }
+        _preparation_state[workspace_id] = {"step": "complete", "progress": 100, "rejected_count": n_rejected}
         logger.info("workspace_ready", workspace_id=workspace_id)
 
     @staticmethod

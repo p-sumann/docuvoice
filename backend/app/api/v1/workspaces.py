@@ -40,6 +40,25 @@ async def create_workspace(
     return ApiResponse(data=WorkspaceResponse(**asdict(ws)))
 
 
+@router.delete("/workspaces", status_code=200)
+async def delete_all_workspaces(
+    service: WorkspaceService = Depends(get_workspace_service),
+) -> ApiResponse[dict]:
+    count = await service.delete_all_workspaces()
+    return ApiResponse(data={"deleted": count})
+
+
+@router.delete("/workspaces/{workspace_id}", status_code=204)
+async def delete_workspace(
+    workspace_id: str,
+    service: WorkspaceService = Depends(get_workspace_service),
+) -> None:
+    ws = await service.get_workspace(workspace_id)
+    if ws is None:
+        raise HTTPException(status_code=404, detail="Workspace not found")
+    await service.delete_workspace(workspace_id)
+
+
 # Global stats — must be before /{workspace_id} to avoid path conflict
 @router.get("/workspaces/stats", response_model=ApiResponse[WorkspaceStatsResponse])
 async def get_global_stats(

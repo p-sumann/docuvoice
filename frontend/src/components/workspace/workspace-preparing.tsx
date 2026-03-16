@@ -8,20 +8,50 @@ import {
   XCircle,
   ArrowLeft,
   FileText,
+  Loader2,
+  ScanSearch,
+  ShieldCheck,
+  BrainCircuit,
+  Sparkles,
+  Settings,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { fetchPreparationStatus, prepareWorkspace } from "@/lib/api";
 import { AgentAudioVisualizerAura } from "@/components/agents-ui/agent-audio-visualizer-aura";
 
-const STEP_LABELS: Record<string, string> = {
-  extracting_text: "Reading documents...",
-  validating_documents: "Validating relevance...",
-  extracting_fields: "Extracting key data points...",
-  generating_findings: "Analyzing for discrepancies...",
-  finalizing: "Setting up workspace...",
-  complete: "Workspace ready!",
-};
+const STEPS = [
+  {
+    key: "extracting_text",
+    label: "Reading",
+    description: "Extracting text from documents",
+    icon: ScanSearch,
+  },
+  {
+    key: "validating_documents",
+    label: "Validating",
+    description: "Checking document relevance",
+    icon: ShieldCheck,
+  },
+  {
+    key: "extracting_fields",
+    label: "Extracting",
+    description: "Pulling key data points",
+    icon: BrainCircuit,
+  },
+  {
+    key: "generating_findings",
+    label: "Analyzing",
+    description: "Scanning for discrepancies",
+    icon: Sparkles,
+  },
+  {
+    key: "finalizing",
+    label: "Finalizing",
+    description: "Setting up workspace",
+    icon: Settings,
+  },
+];
 
 interface WorkspacePreparingProps {
   workspaceId: string;
@@ -36,26 +66,12 @@ export function WorkspacePreparing({
   const [currentStep, setCurrentStep] = useState("extracting_text");
   const [stepProgress, setStepProgress] = useState(0);
   const [rejectedCount, setRejectedCount] = useState(0);
-  const [processedDocs, setProcessedDocs] = useState<string[]>([]);
   const preparedRef = useRef(false);
 
   const isAllRejected = currentStep === "all_rejected";
   const isComplete = currentStep === "complete";
 
-  // Overall progress across all steps
-  const stepOrder = [
-    "extracting_text",
-    "validating_documents",
-    "extracting_fields",
-    "generating_findings",
-    "finalizing",
-  ];
-  const stepIndex = stepOrder.indexOf(currentStep);
-  const overallProgress = isComplete
-    ? 100
-    : stepIndex >= 0
-      ? ((stepIndex + stepProgress / 100) / stepOrder.length) * 100
-      : 0;
+  const stepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   useEffect(() => {
     if (!preparedRef.current) {
@@ -74,9 +90,15 @@ export function WorkspacePreparing({
 
         if (status.step === "complete") {
           clearInterval(interval);
-          setTimeout(() => {
-            router.push(`/workspace/${workspaceId}`);
-          }, 800);
+          // Invalidate workspace cache so the parent re-fetches with status="ready"
+          const { setWorkspaceData } = await import("@/stores/workspace-store").then(m => m.useWorkspaceStore.getState());
+          // Force a refetch by resetting the timestamps
+          setWorkspaceData({
+            workspace: null,
+            documents: [],
+            findings: [],
+            extractedFields: [],
+          });
         }
 
         if (status.step === "all_rejected") {
@@ -85,7 +107,7 @@ export function WorkspacePreparing({
       } catch {
         // Keep polling on transient errors
       }
-    }, 600);
+    }, 1500);
 
     return () => clearInterval(interval);
   }, [workspaceId, router]);
@@ -137,7 +159,7 @@ export function WorkspacePreparing({
         state={isComplete ? "listening" : "thinking"}
       />
 
-      {/* Title + step label */}
+      {/* Title */}
       <div className="text-center space-y-1">
         <h2 className="text-lg font-semibold text-[var(--dv-text-primary)]">
           {isComplete ? "Workspace Ready" : "Setting up your workspace"}
@@ -145,33 +167,81 @@ export function WorkspacePreparing({
         <p className="text-sm text-[var(--dv-text-muted)]">
           {isComplete
             ? `${workspaceName} is ready to go`
-            : (STEP_LABELS[currentStep] ??
-              `AI is preparing ${workspaceName}`)}
+            : `AI is preparing ${workspaceName}`}
         </p>
       </div>
 
-      {/* Single progress bar */}
-      <div className="w-full space-y-2">
-        <div className="h-1.5 rounded-full bg-[var(--dv-bg-active)] overflow-hidden">
-          <div
-            className={cn(
-              "h-full rounded-full transition-all duration-500 ease-out",
-              isComplete
-                ? "bg-[var(--dv-green)]"
-                : "bg-[var(--dv-wine)]"
-            )}
-            style={{ width: `${overallProgress}%` }}
-          />
-        </div>
-        <div className="flex justify-between text-[10px] text-[var(--dv-text-muted)]">
-          <span>
-            {stepIndex >= 0
-              ? `Step ${stepIndex + 1} of ${stepOrder.length}`
-              : ""}
-          </span>
-          <span>{Math.round(overallProgress)}%</span>
-        </div>
+      {/* Step circles */}
+      <div className="w-full flex items-center justify-between px-2">
+        {STEPS.map((step, i) => {
+          const isActive = i === stepIndex;
+          const isDone = isComplete || i < stepIndex;
+          const isPending = !isComplete && i > stepIndex;
+          const StepIcon = step.icon;
+
+          return (
+            <div key={step.key} className="flex items-center flex-1 last:flex-none">
+              {/* Step circle + label */}
+              <div className="flex flex-col items-center gap-1.5 relative">
+                <div
+                  className={cn(
+                    "size-10 rounded-full flex items-center justify-center transition-all duration-500 border-2",
+                    isDone && "bg-[var(--dv-green)]/15 border-[var(--dv-green)] text-[var(--dv-green)]",
+                    isActive && "border-[var(--dv-wine)] text-[var(--dv-wine)] bg-[var(--dv-wine)]/10",
+                    isPending && "border-[var(--dv-border-subtle)] text-[var(--dv-text-muted)] bg-[var(--dv-bg-surface)]",
+                  )}
+                >
+                  {isDone ? (
+                    <CheckCircle2 className="size-5" />
+                  ) : isActive ? (
+                    <Loader2 className="size-5 animate-spin" />
+                  ) : (
+                    <StepIcon className="size-4" />
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "text-[10px] font-medium whitespace-nowrap transition-colors duration-300",
+                    isDone && "text-[var(--dv-green)]",
+                    isActive && "text-[var(--dv-wine)]",
+                    isPending && "text-[var(--dv-text-muted)]",
+                  )}
+                >
+                  {step.label}
+                </span>
+              </div>
+
+              {/* Connector line */}
+              {i < STEPS.length - 1 && (
+                <div className="flex-1 h-0.5 mx-1.5 mt-[-18px] rounded-full overflow-hidden bg-[var(--dv-border-subtle)]">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all duration-700 ease-out",
+                      i < stepIndex
+                        ? "w-full bg-[var(--dv-green)]"
+                        : i === stepIndex
+                          ? "bg-[var(--dv-wine)]"
+                          : "w-0",
+                    )}
+                    style={
+                      i === stepIndex
+                        ? { width: `${stepProgress}%` }
+                        : undefined
+                    }
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Current step description */}
+      {!isComplete && stepIndex >= 0 && (
+        <p className="text-sm text-[var(--dv-text-secondary)] animate-in fade-in duration-300">
+          {STEPS[stepIndex].description}...
+        </p>
+      )}
 
       {/* Partial rejection warning */}
       {rejectedCount > 0 && !isAllRejected && (
@@ -181,24 +251,6 @@ export function WorkspacePreparing({
             {rejectedCount} document{rejectedCount > 1 ? "s" : ""} rejected
             — not relevant to detected domain
           </p>
-        </div>
-      )}
-
-      {/* Document names appearing as agent "reads" them */}
-      {processedDocs.length > 0 && (
-        <div className="w-full space-y-2">
-          {processedDocs.map((doc, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2 p-2 rounded-lg bg-[var(--dv-bg-surface)] border border-[var(--dv-border-subtle)] animate-in fade-in slide-in-from-bottom-2 duration-300"
-            >
-              <FileText className="size-3.5 text-[var(--dv-wine)]" />
-              <span className="text-xs text-[var(--dv-text-secondary)] truncate">
-                {doc}
-              </span>
-              <CheckCircle2 className="size-3.5 text-[var(--dv-green)] ml-auto flex-shrink-0" />
-            </div>
-          ))}
         </div>
       )}
     </div>

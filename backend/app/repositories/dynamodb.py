@@ -1,3 +1,4 @@
+import asyncio
 from decimal import Decimal
 from typing import Any
 
@@ -41,33 +42,58 @@ def _get_table():
 
 
 @_dynamo_retry
-def _put_item(table: Any, **kwargs: Any) -> dict:
+def _put_item_sync(table: Any, **kwargs: Any) -> dict:
     return table.put_item(**kwargs)
 
 
 @_dynamo_retry
-def _get_item(table: Any, **kwargs: Any) -> dict:
+def _get_item_sync(table: Any, **kwargs: Any) -> dict:
     return table.get_item(**kwargs)
 
 
 @_dynamo_retry
-def _query(table: Any, **kwargs: Any) -> dict:
+def _query_sync(table: Any, **kwargs: Any) -> dict:
     return table.query(**kwargs)
 
 
 @_dynamo_retry
-def _scan(table: Any, **kwargs: Any) -> dict:
+def _scan_sync(table: Any, **kwargs: Any) -> dict:
     return table.scan(**kwargs)
 
 
 @_dynamo_retry
-def _update_item(table: Any, **kwargs: Any) -> dict:
+def _update_item_sync(table: Any, **kwargs: Any) -> dict:
     return table.update_item(**kwargs)
 
 
 @_dynamo_retry
-def _delete_item(table: Any, **kwargs: Any) -> dict:
+def _delete_item_sync(table: Any, **kwargs: Any) -> dict:
     return table.delete_item(**kwargs)
+
+
+# Async wrappers — run blocking boto3 calls in thread pool so asyncio.gather works
+async def _put_item(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_put_item_sync, table, **kwargs)
+
+
+async def _get_item(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_get_item_sync, table, **kwargs)
+
+
+async def _query(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_query_sync, table, **kwargs)
+
+
+async def _scan(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_scan_sync, table, **kwargs)
+
+
+async def _update_item(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_update_item_sync, table, **kwargs)
+
+
+async def _delete_item(table: Any, **kwargs: Any) -> dict:
+    return await asyncio.to_thread(_delete_item_sync, table, **kwargs)
 
 
 def _sanitize_for_dynamo(value: Any) -> Any:
@@ -139,10 +165,10 @@ class DynamoDBWorkspaceRepository:
         table = _get_table()
         # Match workspace records by key pattern (PK and SK both start with WS#)
         filter_expr = Attr("PK").begins_with("WS#") & Attr("SK").begins_with("WS#")
-        resp = _scan(table, FilterExpression=filter_expr)
+        resp = await _scan(table, FilterExpression=filter_expr)
         items = resp.get("Items", [])
         while "LastEvaluatedKey" in resp:
-            resp = _scan(table,
+            resp = await _scan(table,
                 FilterExpression=filter_expr,
                 ExclusiveStartKey=resp["LastEvaluatedKey"],
             )
@@ -151,7 +177,7 @@ class DynamoDBWorkspaceRepository:
 
     async def get_by_id(self, workspace_id: str) -> WorkspaceModel | None:
         table = _get_table()
-        resp = _get_item(table,
+        resp = await _get_item(table,
             Key={"PK": f"WS#{workspace_id}", "SK": f"WS#{workspace_id}"}
         )
         item = resp.get("Item")
@@ -161,29 +187,31 @@ class DynamoDBWorkspaceRepository:
 
     async def create(self, workspace: WorkspaceModel) -> WorkspaceModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(workspace))
+        await _put_item(table, Item=self._to_item(workspace))
         logger.info("workspace_created_dynamo", workspace_id=workspace.id)
         return workspace
 
     async def update(self, workspace: WorkspaceModel) -> WorkspaceModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(workspace))
+        await _put_item(table, Item=self._to_item(workspace))
         logger.info("workspace_updated_dynamo", workspace_id=workspace.id)
         return workspace
 
     async def delete(self, workspace_id: str) -> None:
         table = _get_table()
         # Delete workspace record
-        _delete_item(table,
+        await _delete_item(table,
             Key={"PK": f"WS#{workspace_id}", "SK": f"WS#{workspace_id}"}
         )
         # Also delete associated documents, sessions under this workspace
-        resp = _query(table,
+        resp = await _query(table,
             KeyConditionExpression=Key("PK").eq(f"WS#{workspace_id}"),
         )
-        with table.batch_writer() as batch:
-            for item in resp.get("Items", []):
-                batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+        def _batch_delete():
+            with table.batch_writer() as batch:
+                for item in resp.get("Items", []):
+                    batch.delete_item(Key={"PK": item["PK"], "SK": item["SK"]})
+        await asyncio.to_thread(_batch_delete)
         logger.info("workspace_deleted_dynamo", workspace_id=workspace_id)
 
 
@@ -256,7 +284,7 @@ class DynamoDBDocumentRepository:
 
     async def list_by_workspace(self, workspace_id: str) -> list[DocumentModel]:
         table = _get_table()
-        resp = _query(table,
+        resp = await _query(table,
             KeyConditionExpression=Key("PK").eq(f"WS#{workspace_id}") & Key("SK").begins_with("DOC#"),
         )
         return [self._from_item(i) for i in resp.get("Items", [])]
@@ -274,13 +302,13 @@ class DynamoDBDocumentRepository:
 
     async def create(self, document: DocumentModel) -> DocumentModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(document))
+        await _put_item(table, Item=self._to_item(document))
         logger.info("document_created_dynamo", doc_id=document.id)
         return document
 
     async def update(self, document: DocumentModel) -> DocumentModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(document))
+        await _put_item(table, Item=self._to_item(document))
         logger.info("document_updated_dynamo", doc_id=document.id)
         return document
 
@@ -289,7 +317,7 @@ class DynamoDBDocumentRepository:
         doc = await self.get_by_id(doc_id)
         if doc:
             table = _get_table()
-            _delete_item(table,
+            await _delete_item(table,
                 Key={"PK": f"WS#{doc.workspace_id}", "SK": f"DOC#{doc.id}"}
             )
             logger.info("document_deleted_dynamo", doc_id=doc_id)
@@ -336,7 +364,7 @@ class DynamoDBSessionRepository:
 
     async def list_by_workspace(self, workspace_id: str) -> list[SessionModel]:
         table = _get_table()
-        resp = _query(table,
+        resp = await _query(table,
             KeyConditionExpression=Key("PK").eq(f"WS#{workspace_id}") & Key("SK").begins_with("SESSION#"),
         )
         return [self._from_item(i) for i in resp.get("Items", [])]
@@ -345,10 +373,10 @@ class DynamoDBSessionRepository:
         table = _get_table()
         # Scan for sessions by key pattern, sort by started_at descending
         filter_expr = Attr("SK").begins_with("SESSION#") & Attr("PK").begins_with("WS#")
-        resp = _scan(table, FilterExpression=filter_expr)
+        resp = await _scan(table, FilterExpression=filter_expr)
         items = resp.get("Items", [])
         while "LastEvaluatedKey" in resp:
-            resp = _scan(table,
+            resp = await _scan(table,
                 FilterExpression=filter_expr,
                 ExclusiveStartKey=resp["LastEvaluatedKey"],
             )
@@ -369,13 +397,13 @@ class DynamoDBSessionRepository:
 
     async def create(self, session: SessionModel) -> SessionModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(session))
+        await _put_item(table, Item=self._to_item(session))
         logger.info("session_created_dynamo", session_id=session.id)
         return session
 
     async def get_transcript(self, session_id: str) -> list[TranscriptEntryModel]:
         table = _get_table()
-        resp = _query(table,
+        resp = await _query(table,
             KeyConditionExpression=Key("PK").eq(f"SESSION#{session_id}") & Key("SK").begins_with("TRANSCRIPT#"),
         )
         items = resp.get("Items", [])
@@ -394,7 +422,7 @@ class DynamoDBSessionRepository:
 
     async def add_transcript_entry(self, session_id: str, entry: TranscriptEntryModel) -> None:
         table = _get_table()
-        _put_item(table, Item=_sanitize_for_dynamo({
+        await _put_item(table, Item=_sanitize_for_dynamo({
             "PK": f"SESSION#{session_id}",
             "SK": f"TRANSCRIPT#{entry.id}",
             "entity_type": "TRANSCRIPT",
@@ -458,10 +486,10 @@ class DynamoDBFindingRepository:
         table = _get_table()
         # Findings are keyed by session, so filter by workspace_id attribute + SK pattern
         filter_expr = Attr("SK").begins_with("FINDING#") & Attr("workspace_id").eq(workspace_id)
-        resp = _scan(table, FilterExpression=filter_expr)
+        resp = await _scan(table, FilterExpression=filter_expr)
         items = resp.get("Items", [])
         while "LastEvaluatedKey" in resp:
-            resp = _scan(table,
+            resp = await _scan(table,
                 FilterExpression=filter_expr,
                 ExclusiveStartKey=resp["LastEvaluatedKey"],
             )
@@ -470,6 +498,6 @@ class DynamoDBFindingRepository:
 
     async def create(self, finding: FindingModel) -> FindingModel:
         table = _get_table()
-        _put_item(table, Item=self._to_item(finding))
+        await _put_item(table, Item=self._to_item(finding))
         logger.info("finding_created_dynamo", finding_id=finding.id)
         return finding

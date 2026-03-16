@@ -7,8 +7,6 @@ anomalies, exposure risks, missing information, and red flags.
 import asyncio
 from typing import Literal
 
-import boto3
-import instructor
 import structlog
 from botocore.exceptions import ClientError, ReadTimeoutError
 from pydantic import BaseModel, Field
@@ -16,6 +14,7 @@ from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_ex
 
 from app.config import settings
 from app.models.document import DocumentModel
+from app.processing.ai_extractor import _get_bedrock_client
 
 logger = structlog.get_logger()
 
@@ -139,14 +138,7 @@ def _build_context(documents: list[DocumentModel]) -> str:
 )
 def _generate_sync(documents: list[DocumentModel], domain: str) -> FindingsResult:
     """Synchronous findings generation (runs in thread)."""
-    bedrock = boto3.client(
-        "bedrock-runtime",
-        region_name=settings.aws_default_region,
-        aws_access_key_id=settings.aws_access_key_id,
-        aws_secret_access_key=settings.aws_secret_access_key,
-        aws_session_token=settings.aws_session_token or None,
-    )
-    client = instructor.from_bedrock(bedrock)
+    client = _get_bedrock_client()
 
     domain_prompt = _DOMAIN_PROMPTS.get(domain, _DOMAIN_PROMPTS.get("insurance_claims", ""))
     if not domain_prompt:

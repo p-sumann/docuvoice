@@ -143,6 +143,10 @@ const uniformTypeToGLSLType = (t: string) => {
 const LinearFilter = 9729;
 const NearestFilter = 9728;
 const LinearMipMapLinearFilter = 9987;
+const NearestMipMapLinearFilter = 9986;
+const LinearMipMapNearestFilter = 9985;
+const NearestMipMapNearestFilter = 9984;
+const MirroredRepeatWrapping = 33648;
 const ClampToEdgeWrapping = 33071;
 const RepeatWrapping = 10497;
 
@@ -219,6 +223,11 @@ class Texture {
       this.pow2canvas.height = 2 ** Math.floor(Math.log(image.height) / Math.LN2);
       const context = this.pow2canvas.getContext('2d');
       context?.drawImage(image, 0, 0, this.pow2canvas.width, this.pow2canvas.height);
+      console.warn(
+        log(
+          `Image is not power of two ${image.width} x ${image.height}. Resized to ${this.pow2canvas.width} x ${this.pow2canvas.height};`,
+        ),
+      );
       return this.pow2canvas as T;
     }
     return image;
@@ -228,14 +237,16 @@ class Texture {
     const { url, wrapS, wrapT, minFilter, magFilter, flipY = -1 }: TextureParams = textureArgs;
     if (!url) {
       return Promise.reject(
-        new Error(log('Missing url')),
+        new Error(
+          log('Missing url, please make sure to pass the url of your texture { url: ... }'),
+        ),
       );
     }
     const isImage = /(\.jpg|\.jpeg|\.png|\.gif|\.bmp)$/i.exec(url);
     const isVideo = /(\.mp4|\.3gp|\.webm|\.ogv)$/i.exec(url);
     if (isImage === null && isVideo === null) {
       return Promise.reject(
-        new Error(log(`Invalid format (url: ${url})`)),
+        new Error(log(`Please upload a video or an image with a valid format (url: ${url})`)),
       );
     }
     Object.assign(this, { url, wrapS, wrapT, minFilter, magFilter, flipY });
@@ -249,7 +260,17 @@ class Texture {
     const pixel = new Uint8Array([255, 255, 255, 0]);
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, srcFormat, srcType, pixel);
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      level,
+      internalFormat,
+      width,
+      height,
+      border,
+      srcFormat,
+      srcType,
+      pixel,
+    );
     if (isVideo) {
       const video = this.setupVideo(url);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -264,13 +285,18 @@ class Texture {
       return new Promise((resolve, reject) => {
         const image = new Image();
         image.crossOrigin = 'anonymous';
-        image.onload = () => resolve(image);
-        image.onerror = () => reject(new Error(log(`failed loading url: ${url}`)));
+        image.onload = () => {
+          resolve(image);
+        };
+        image.onerror = () => {
+          reject(new Error(log(`failed loading url: ${url}`)));
+        };
         image.src = url ?? '';
       });
     }
     let image = (await loadImage()) as HTMLImageElement;
-    let isPowerOf2 = (image.width & (image.width - 1)) === 0 && (image.height & (image.height - 1)) === 0;
+    let isPowerOf2 =
+      (image.width & (image.width - 1)) === 0 && (image.height & (image.height - 1)) === 0;
     if (
       (textureArgs.wrapS !== ClampToEdgeWrapping ||
         textureArgs.wrapT !== ClampToEdgeWrapping ||
@@ -283,12 +309,20 @@ class Texture {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flipY);
     gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, srcFormat, srcType, image);
-    if (isPowerOf2 && textureArgs.minFilter !== NearestFilter && textureArgs.minFilter !== LinearFilter) {
+    if (
+      isPowerOf2 &&
+      textureArgs.minFilter !== NearestFilter &&
+      textureArgs.minFilter !== LinearFilter
+    ) {
       gl.generateMipmap(gl.TEXTURE_2D);
     }
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, this.wrapS || RepeatWrapping);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, this.wrapT || RepeatWrapping);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, this.minFilter || LinearMipMapLinearFilter);
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MIN_FILTER,
+      this.minFilter || LinearMipMapLinearFilter,
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, this.magFilter || LinearFilter);
     this._webglTexture = texture;
     this.source = image;
@@ -313,7 +347,9 @@ const latestPointerClientCoords = (e: MouseEvent | TouchEvent) => {
 const lerpVal = (v0: number, v1: number, t: number) => v0 * (1 - t) + v1 * t;
 const insertStringAtIndex = (currentString: string, string: string, index: number) =>
   index > 0
-    ? currentString.substring(0, index) + string + currentString.substring(index, currentString.length)
+    ? currentString.substring(0, index) +
+      string +
+      currentString.substring(index, currentString.length)
     : string + currentString;
 
 type Uniform = { type: string; value: number[] | number };
@@ -328,19 +364,84 @@ type TextureParams = {
 };
 
 export interface ReactShaderToyProps {
+  /** Fragment shader GLSL code. */
   fs: string;
+
+  /** Vertex shader GLSL code. */
   vs?: string;
+
+  /**
+   * Textures to be passed to the shader. Textures need to be squared or will be
+   * automatically resized.
+   *
+   * Options default to:
+   *
+   * ```js
+   * {
+   *   minFilter: LinearMipMapLinearFilter,
+   *   magFilter: LinearFilter,
+   *   wrapS: RepeatWrapping,
+   *   wrapT: RepeatWrapping,
+   * }
+   * ```
+   *
+   * See [textures in the docs](https://rysana.com/docs/react-shaders#textures)
+   * for details.
+   */
   textures?: TextureParams[];
+
+  /**
+   * Custom uniforms to be passed to the shader.
+   *
+   * See [custom uniforms in the
+   * docs](https://rysana.com/docs/react-shaders#custom-uniforms) for details.
+   */
   uniforms?: Uniforms;
+
+  /**
+   * Color used when clearing the canvas.
+   *
+   * See [the WebGL
+   * docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/clearColor)
+   * for details.
+   */
   clearColor?: Vector4;
+
+  /**
+   * GLSL precision qualifier. Defaults to `'highp'`. Balance between
+   * performance and quality.
+   */
   precision?: 'highp' | 'lowp' | 'mediump';
+
+  /** Custom inline style for canvas. */
   style?: React.CSSProperties;
+
+  /** Customize WebGL context attributes. See [the WebGL docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/getContextAttributes) for details. */
   contextAttributes?: Record<string, unknown>;
+
+  /** Lerp value for `iMouse` built-in uniform. Must be between 0 and 1. */
   lerp?: number;
+
+  /** Device pixel ratio. */
   devicePixelRatio?: number;
+
+  /**
+   * Callback for when the textures are done loading. Useful if you want to do
+   * something like e.g. hide the canvas until textures are done loading.
+   */
   onDoneLoadingTextures?: () => void;
+
+  /** Custom callback to handle errors. Defaults to `console.error`. */
   onError?: (error: string) => void;
+
+  /** Custom callback to handle warnings. Defaults to `console.warn`. */
   onWarning?: (warning: string) => void;
+
+  /**
+   * When true, the animation loop runs even when the canvas is not visible in the viewport.
+   * When false (default), animation runs only while visible (uses Intersection Observer),
+   * reducing CPU/GPU usage when the shader is off-screen.
+   */
   animateWhenNotVisible?: boolean;
 }
 
@@ -361,6 +462,7 @@ export function ReactShaderToy({
   animateWhenNotVisible = false,
   ...canvasProps
 }: ReactShaderToyProps & ComponentPropsWithoutRef<'canvas'>) {
+  // Refs for WebGL state
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const glRef = useRef<WebGLRenderingContext | null>(null);
   const squareVerticesBufferRef = useRef<WebGLBuffer | null>(null);
@@ -378,7 +480,10 @@ export function ReactShaderToy({
   const lastTimeRef = useRef(0);
   const resizeObserverRef = useRef<ResizeObserver | undefined>(undefined);
   const uniformsRef = useRef<
-    Record<string, { type: string; isNeeded: boolean; value?: number[] | number; arraySize?: string }>
+    Record<
+      string,
+      { type: string; isNeeded: boolean; value?: number[] | number; arraySize?: string }
+    >
   >({
     [UNIFORM_TIME]: { type: 'float', isNeeded: false, value: 0 },
     [UNIFORM_TIMEDELTA]: { type: 'float', isNeeded: false, value: 0 },
@@ -406,7 +511,10 @@ export function ReactShaderToy({
   const initWebGL = () => {
     if (!canvasRef.current) return;
     glRef.current = (canvasRef.current.getContext('webgl', contextAttributes) ||
-      canvasRef.current.getContext('experimental-webgl', contextAttributes)) as WebGLRenderingContext | null;
+      canvasRef.current.getContext(
+        'experimental-webgl',
+        contextAttributes,
+      )) as WebGLRenderingContext | null;
     glRef.current?.getExtension('OES_standard_derivatives');
     glRef.current?.getExtension('EXT_shader_texture_lod');
   };
@@ -420,15 +528,26 @@ export function ReactShaderToy({
   };
 
   const onDeviceOrientationChange = ({ alpha, beta, gamma }: DeviceOrientationEvent) => {
-    uniformsRef.current.iDeviceOrientation!.value = [alpha ?? 0, beta ?? 0, gamma ?? 0, window.orientation ?? 0];
+    uniformsRef.current.iDeviceOrientation!.value = [
+      alpha ?? 0,
+      beta ?? 0,
+      gamma ?? 0,
+      window.orientation ?? 0,
+    ];
   };
 
   const mouseDown = (e: MouseEvent | TouchEvent) => {
     const [clientX = 0, clientY = 0] = latestPointerClientCoords(e);
     const mouseX = clientX - (canvasPositionRef.current?.left ?? 0) - window.pageXOffset;
-    const mouseY = (canvasPositionRef.current?.height ?? 0) - clientY - (canvasPositionRef.current?.top ?? 0) - window.pageYOffset;
+    const mouseY =
+      (canvasPositionRef.current?.height ?? 0) -
+      clientY -
+      (canvasPositionRef.current?.top ?? 0) -
+      window.pageYOffset;
     mousedownRef.current = true;
-    const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value) ? uniformsRef.current.iMouse.value : undefined;
+    const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value)
+      ? uniformsRef.current.iMouse.value
+      : undefined;
     if (mouseValue) {
       mouseValue[2] = mouseX;
       mouseValue[3] = mouseY;
@@ -441,12 +560,15 @@ export function ReactShaderToy({
     canvasPositionRef.current = canvasRef.current?.getBoundingClientRect();
     const [clientX = 0, clientY = 0] = latestPointerClientCoords(e);
     const mouseX = clientX - (canvasPositionRef.current?.left ?? 0);
-    const mouseY = (canvasPositionRef.current?.height ?? 0) - clientY - (canvasPositionRef.current?.top ?? 0);
+    const mouseY =
+      (canvasPositionRef.current?.height ?? 0) - clientY - (canvasPositionRef.current?.top ?? 0);
     if (lerp !== 1) {
       lastMouseArrRef.current[0] = mouseX;
       lastMouseArrRef.current[1] = mouseY;
     } else {
-      const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value) ? uniformsRef.current.iMouse.value : undefined;
+      const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value)
+        ? uniformsRef.current.iMouse.value
+        : undefined;
       if (mouseValue) {
         mouseValue[0] = mouseX;
         mouseValue[1] = mouseY;
@@ -455,7 +577,9 @@ export function ReactShaderToy({
   };
 
   const mouseUp = () => {
-    const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value) ? uniformsRef.current.iMouse.value : undefined;
+    const mouseValue = Array.isArray(uniformsRef.current.iMouse?.value)
+      ? uniformsRef.current.iMouse.value
+      : undefined;
     if (mouseValue) {
       mouseValue[2] = 0;
       mouseValue[3] = 0;
@@ -466,6 +590,7 @@ export function ReactShaderToy({
     const gl = glRef.current;
     if (!gl) return;
     canvasPositionRef.current = canvasRef.current?.getBoundingClientRect();
+    // Force pixel ratio to be one to avoid expensive calculus on retina display.
     const realToCSSPixels = devicePixelRatio;
     const displayWidth = Math.floor((canvasPositionRef.current?.width ?? 1) * realToCSSPixels);
     const displayHeight = Math.floor((canvasPositionRef.current?.height ?? 1) * realToCSSPixels);
@@ -504,11 +629,18 @@ export function ReactShaderToy({
     gl.attachShader(shaderProgramRef.current, fragmentShaderObj);
     gl.linkProgram(shaderProgramRef.current);
     if (!gl.getProgramParameter(shaderProgramRef.current, gl.LINK_STATUS)) {
-      onError?.(log(`Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgramRef.current)}`));
+      onError?.(
+        log(
+          `Unable to initialize the shader program: ${gl.getProgramInfoLog(shaderProgramRef.current)}`,
+        ),
+      );
       return;
     }
     gl.useProgram(shaderProgramRef.current);
-    vertexPositionAttributeRef.current = gl.getAttribLocation(shaderProgramRef.current, 'aVertexPosition');
+    vertexPositionAttributeRef.current = gl.getAttribLocation(
+      shaderProgramRef.current,
+      'aVertexPosition',
+    );
     gl.enableVertexAttribArray(vertexPositionAttributeRef.current);
   };
 
@@ -539,23 +671,44 @@ export function ReactShaderToy({
     if (!gl) return;
     if (textures && textures.length > 0) {
       uniformsRef.current[`${UNIFORM_CHANNELRESOLUTION}`] = {
-        type: 'vec3', isNeeded: false, arraySize: `[${textures.length}]`, value: [],
+        type: 'vec3',
+        isNeeded: false,
+        arraySize: `[${textures.length}]`,
+        value: [],
       };
       const texturePromisesArr = textures.map((texture: TextureParams, id: number) => {
-        uniformsRef.current[`${UNIFORM_CHANNEL}${id}`] = { type: 'sampler2D', isNeeded: false };
+        // Dynamically add textures uniforms.
+        uniformsRef.current[`${UNIFORM_CHANNEL}${id}`] = {
+          type: 'sampler2D',
+          isNeeded: false,
+        };
         setupChannelRes(texture, id);
         texturesArrRef.current[id] = new Texture(gl);
-        return texturesArrRef.current[id]?.load(texture).then((t: Texture) => { setupChannelRes(t, id); });
+        return texturesArrRef.current[id]?.load(texture).then((t: Texture) => {
+          setupChannelRes(t, id);
+        });
       });
       Promise.all(texturePromisesArr)
-        .then(() => { if (onDoneLoadingTextures) onDoneLoadingTextures(); })
-        .catch((e) => { onError?.(e); if (onDoneLoadingTextures) onDoneLoadingTextures(); });
+        .then(() => {
+          if (onDoneLoadingTextures) onDoneLoadingTextures();
+        })
+        .catch((e) => {
+          onError?.(e);
+          if (onDoneLoadingTextures) onDoneLoadingTextures();
+        });
     } else if (onDoneLoadingTextures) onDoneLoadingTextures();
   };
 
   const preProcessFragment = (fragment: string) => {
     const isValidPrecision = PRECISIONS.includes(precision ?? 'highp');
     const precisionString = `precision ${isValidPrecision ? precision : PRECISIONS[1]} float;\n`;
+    if (!isValidPrecision) {
+      onWarning?.(
+        log(
+          `wrong precision type ${precision}, please make sure to pass one of a valid precision lowp, mediump, highp, by default you shader precision will be set to highp.`,
+        ),
+      );
+    }
     let fragmentShader = precisionString
       .concat(`#define DPR ${devicePixelRatio.toFixed(1)}\n`)
       .concat(fragment.replace(/texture\(/g, 'texture2D('));
@@ -590,7 +743,12 @@ export function ReactShaderToy({
           if (!shaderProgramRef.current) return;
           const customUniformLocation = gl.getUniformLocation(shaderProgramRef.current, name);
           if (!customUniformLocation) return;
-          processUniform(gl, customUniformLocation, currentUniform.type as UniformType, currentUniform.value);
+          processUniform(
+            gl,
+            customUniformLocation,
+            currentUniform.type as UniformType,
+            currentUniform.value,
+          );
         }
       }
     }
@@ -599,12 +757,21 @@ export function ReactShaderToy({
       gl.uniform4fv(mouseUniform, uniformsRef.current.iMouse.value as number[]);
     }
     if (uniformsRef.current.iChannelResolution?.isNeeded) {
-      const channelResUniform = gl.getUniformLocation(shaderProgramRef.current, UNIFORM_CHANNELRESOLUTION);
+      const channelResUniform = gl.getUniformLocation(
+        shaderProgramRef.current,
+        UNIFORM_CHANNELRESOLUTION,
+      );
       gl.uniform3fv(channelResUniform, uniformsRef.current.iChannelResolution.value as number[]);
     }
     if (uniformsRef.current.iDeviceOrientation?.isNeeded) {
-      const deviceOrientationUniform = gl.getUniformLocation(shaderProgramRef.current, UNIFORM_DEVICEORIENTATION);
-      gl.uniform4fv(deviceOrientationUniform, uniformsRef.current.iDeviceOrientation.value as number[]);
+      const deviceOrientationUniform = gl.getUniformLocation(
+        shaderProgramRef.current,
+        UNIFORM_DEVICEORIENTATION,
+      );
+      gl.uniform4fv(
+        deviceOrientationUniform,
+        uniformsRef.current.iDeviceOrientation.value as number[],
+      );
     }
     if (uniformsRef.current.iTime?.isNeeded) {
       const timeUniform = gl.getUniformLocation(shaderProgramRef.current, UNIFORM_TIME);
@@ -619,7 +786,8 @@ export function ReactShaderToy({
       const month = d.getMonth() + 1;
       const day = d.getDate();
       const year = d.getFullYear();
-      const time = d.getHours() * 60 * 60 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() * 0.001;
+      const time =
+        d.getHours() * 60 * 60 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() * 0.001;
       const dateUniform = gl.getUniformLocation(shaderProgramRef.current, UNIFORM_DATE);
       gl.uniform4fv(dateUniform, [year, month, day, time]);
     }
@@ -720,6 +888,7 @@ export function ReactShaderToy({
     }
   }, [animateWhenNotVisible]);
 
+  // Intersection Observer: pause animation when off-screen when animateWhenNotVisible is false
   useEffect(() => {
     if (animateWhenNotVisible || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -739,6 +908,7 @@ export function ReactShaderToy({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [animateWhenNotVisible]);
 
+  // Main effect for initialization and cleanup
   useEffect(() => {
     const textures = texturesArrRef.current;
 
@@ -765,6 +935,7 @@ export function ReactShaderToy({
 
     initFrameIdRef.current = requestAnimationFrame(init);
 
+    // Cleanup function
     return () => {
       const gl = glRef.current;
       if (gl) {
@@ -783,7 +954,7 @@ export function ReactShaderToy({
       cancelAnimationFrame(animFrameIdRef.current ?? 0);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Empty dependency array to run only once on mount
 
   return (
     <canvas ref={canvasRef} style={{ height: '100%', width: '100%', ...style }} {...canvasProps} />

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.api.deps import get_livekit_service
 from app.schemas.common import ApiResponse
-from app.schemas.livekit import LiveKitTokenRequest, LiveKitTokenResponse
+from app.schemas.livekit import LiveKitTokenRequest, LiveKitTokenResponse, LiveKitDispatchRequest
 from app.services.livekit_service import LiveKitService
 
 router = APIRouter()
@@ -20,3 +20,15 @@ async def generate_token(
         domain=payload.domain,
     )
     return ApiResponse(data=LiveKitTokenResponse(token=token, server_url=server_url))
+
+
+@router.post("/livekit/dispatch", status_code=204)
+async def dispatch_agent(
+    payload: LiveKitDispatchRequest,
+    service: LiveKitService = Depends(get_livekit_service),
+) -> None:
+    await service.dispatch_agent(
+        workspace_id=payload.workspace_id,
+        workspace_name=payload.workspace_name,
+        domain=payload.domain,
+    )

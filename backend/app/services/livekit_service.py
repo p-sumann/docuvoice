@@ -1,4 +1,3 @@
-import asyncio
 import json
 import logging
 
@@ -7,25 +6,6 @@ from livekit import api
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-
-async def _dispatch_agent(workspace_id: str, room_metadata: str) -> None:
-    """Dispatch the agent in the background with its own API client."""
-    try:
-        async with api.LiveKitAPI(
-            url=settings.livekit_url,
-            api_key=settings.livekit_api_key,
-            api_secret=settings.livekit_api_secret,
-        ) as lk:
-            await lk.agent_dispatch.create_dispatch(
-                api.CreateAgentDispatchRequest(
-                    agent_name="docuvoice-agent",
-                    room=workspace_id,
-                    metadata=room_metadata,
-                )
-            )
-    except Exception:
-        logger.warning("agent_dispatch_failed", extra={"workspace_id": workspace_id})
 
 
 class LiveKitService:
@@ -86,8 +66,37 @@ class LiveKitService:
             except Exception:
                 pass
 
-        # 3. Dispatch agent in background — don't block token return
-        #    Uses its own API client so the above context manager can close safely.
-        asyncio.create_task(_dispatch_agent(workspace_id, room_metadata))
-
         return token, settings.livekit_url
+
+    async def dispatch_agent(
+        self,
+        workspace_id: str,
+        workspace_name: str = "",
+        domain: str = "insurance_claims",
+    ) -> None:
+        """Explicitly dispatch the voice agent into a room.
+
+        Called once by the frontend after session.start() succeeds.
+        """
+        room_metadata = json.dumps({
+            "workspace_id": workspace_id,
+            "workspace_name": workspace_name or workspace_id,
+            "domain": domain,
+        })
+
+        try:
+            async with api.LiveKitAPI(
+                url=settings.livekit_url,
+                api_key=settings.livekit_api_key,
+                api_secret=settings.livekit_api_secret,
+            ) as lk:
+                await lk.agent_dispatch.create_dispatch(
+                    api.CreateAgentDispatchRequest(
+                        agent_name="docuvoice-agent",
+                        room=workspace_id,
+                        metadata=room_metadata,
+                    )
+                )
+        except Exception:
+            logger.warning("agent_dispatch_failed", extra={"workspace_id": workspace_id})
+            raise

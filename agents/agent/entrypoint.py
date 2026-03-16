@@ -14,9 +14,9 @@ from livekit.plugins import aws, silero
 
 from agent.config import get_settings
 from agent.context.builder import load_workspace_context
-from agent.context.session_memory import SessionMemory
+from agent.context.session_memory import FindingRecord, SessionMemory
 from agent.plugins.registry import resolve_plugin
-from agent.utils.dynamo import create_session, update_session_end
+from agent.utils.dynamo import create_session, list_findings_for_workspace, update_session_end
 from agent.utils.metrics import SessionMetrics
 
 load_dotenv()
@@ -111,9 +111,53 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         full_context_text=full_context,
     )
 
+    # 4b. Pre-load findings from workspace preparation into session memory
+    try:
+        existing_findings = await list_findings_for_workspace(workspace_id)
+        for item in existing_findings:
+            memory.add_finding(FindingRecord(
+                index=memory.next_finding_index(),
+                type=item.get("type", "anomaly"),
+                severity=item.get("severity", "medium"),
+                title=item.get("title", ""),
+                description=item.get("description", ""),
+                document_refs=item.get("document_refs", []),
+                field_refs=item.get("field_refs", []),
+                confidence=float(item.get("confidence", 0.0)),
+            ))
+        if existing_findings:
+            logger.info("loaded_prep_findings", workspace_id=workspace_id, count=len(existing_findings))
+    except Exception:
+        logger.warning("failed_to_load_prep_findings", workspace_id=workspace_id)
+
     # 5. Build the agent with plugin instructions and tools
-    system_prompt = plugin.get_system_prompt(workspace_name=workspace_name, doc_count=doc_count)
+    base_prompt = plugin.get_system_prompt(workspace_name=workspace_name, doc_count=doc_count)
     tools = plugin.get_tools()
+
+    # Add greeting instruction to the system prompt so agent speaks first
+    # Use a clean display name — never mention workspace IDs or internal identifiers
+    display_name = workspace_name if workspace_name and not workspace_name.startswith("ws-") else ""
+    finding_count = len(memory.findings)
+    if doc_count > 0:
+        name_mention = f" for {display_name}" if display_name else ""
+        system_prompt = (
+            f"{base_prompt}\n\n"
+            f"GREETING: Greet the user casually{name_mention} and let them know you've got "
+            f"{doc_count} {'document' if doc_count == 1 else 'documents'} ready. "
+            f"Ask what they'd like to start with — something like 'What would you like to look at first?' "
+            f"Do NOT mention findings, red flags, or any analysis results in the greeting. "
+            f"Let the user ask first. Keep it to 1-2 sentences. "
+            f"Never mention workspace IDs, session IDs, or any internal identifiers.\n\n"
+            f"PACING: You have {finding_count} findings pre-loaded from the initial analysis. "
+            f"Do NOT dump them unprompted. Wait for the user to ask about findings, red flags, "
+            f"discrepancies, or a summary. Then deliver them naturally within 2-3 turns."
+        )
+    else:
+        system_prompt = (
+            f"{base_prompt}\n\n"
+            f"GREETING: Start with a brief greeting and let them know no documents are loaded yet. "
+            f"Keep it to 1 sentence. Never mention workspace IDs, session IDs, or any internal identifiers."
+        )
 
     class DocuVoiceAgent(Agent):
         def __init__(self) -> None:
@@ -122,38 +166,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 tools=tools,
             )
 
-        async def on_enter(self) -> None:
-            """Called when the agent enters the session. Injects lean context and greets user."""
-            if doc_count > 0:
-                # Extract doc type names from lean context for a natural greeting
-                doc_types = re.findall(r"Type:\s*(\S+)", lean_context)
-                type_labels = {
-                    "first_notice_of_loss": "FNOL",
-                    "insurance_policy": "policy",
-                    "medical_bill": "medical bills",
-                    "police_report": "police report",
-                }
-                friendly_types = [type_labels.get(t, t.replace("_", " ")) for t in doc_types]
-                types_str = ", ".join(dict.fromkeys(friendly_types))  # dedupe, preserve order
-
-                greeting_instructions = (
-                    f"DOCUMENT CONTEXT (reference this to answer questions):\n\n"
-                    f"{lean_context}\n\n"
-                    f"---\n"
-                    f"Greet the adjuster casually and get straight to business. "
-                    f"You have {doc_count} documents loaded: {types_str}. "
-                    f"Mention what you have and offer to dive in — 'Where do you want to start?' "
-                    f"or 'Want me to run through the red flags first?'\n"
-                    f"Keep it to 2 sentences max. Sound like a colleague, not a chatbot."
-                )
-            else:
-                greeting_instructions = (
-                    "Greet the adjuster briefly. Let them know you don't have any documents "
-                    "loaded yet for this workspace. Ask them to upload documents through the "
-                    "app so you can start analyzing. Keep it to 1-2 sentences."
-                )
-            await self.session.generate_reply(instructions=greeting_instructions)
-
     # 6. Create the agent session with Nova Sonic 2
     vad_instance: silero.VAD = ctx.proc.userdata["vad"]
 
@@ -161,7 +173,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         userdata=memory,
         llm=aws.realtime.RealtimeModel.with_nova_sonic_2(
             voice=settings.nova_sonic_voice,
-            turn_detection=settings.nova_sonic_turn_detection,
+            turn_detection="HIGH",
+            generate_reply_timeout=30.0,
         ),
         vad=vad_instance,
         max_tool_steps=settings.max_tool_steps,
@@ -197,7 +210,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     ctx.add_shutdown_callback(on_shutdown)
 
-    # 9. Start the session
+    # 10. Start the session
     await session.start(
         room=ctx.room,
         agent=DocuVoiceAgent(),

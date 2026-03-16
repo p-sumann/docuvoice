@@ -2,7 +2,6 @@
 
 import { Plus } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { WorkspaceCard } from "@/components/workspace/workspace-card";
 import { cn } from "@/lib/utils";
 import type { Workspace } from "@/types/workspace";
@@ -23,7 +22,7 @@ export function WorkspaceGrid({
   return (
     <div
       className={cn(
-        "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
+        "rounded-lg border border-[var(--dv-border-subtle)] bg-[var(--dv-bg-surface)] overflow-hidden",
         className
       )}
     >
@@ -36,24 +35,22 @@ export function WorkspaceGrid({
       ))}
 
       {/* Create workspace CTA */}
-      <Card
-        className={cn(
-          "border-2 border-dashed border-[var(--dv-border-default)]",
-          "bg-transparent hover:bg-[var(--dv-bg-surface)]",
-          "hover:border-[var(--dv-border-strong)]",
-          "transition-all duration-200 cursor-pointer"
-        )}
+      <button
         onClick={onCreateWorkspace}
+        className={cn(
+          "flex w-full items-center gap-3 px-4 py-3",
+          "border-t border-dashed border-[var(--dv-border-default)]",
+          "hover:bg-[var(--dv-bg-hover)] transition-colors cursor-pointer",
+          workspaces.length === 0 && "border-t-0"
+        )}
       >
-        <CardContent className="flex flex-col items-center justify-center p-6 h-full min-h-[120px]">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[var(--dv-bg-active)] mb-2">
-            <Plus className="size-5 text-[var(--dv-text-muted)]" />
-          </div>
-          <p className="text-sm text-[var(--dv-text-muted)]">
-            Create Workspace
-          </p>
-        </CardContent>
-      </Card>
+        <div className="flex items-center justify-center size-8 rounded-full bg-[var(--dv-bg-active)]">
+          <Plus className="size-4 text-[var(--dv-text-muted)]" />
+        </div>
+        <span className="text-sm text-[var(--dv-text-muted)]">
+          Create Workspace
+        </span>
+      </button>
     </div>
   );
 }

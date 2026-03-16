@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -58,20 +59,22 @@ class DocumentService:
         doc = await self._document_repo.get_by_id(doc_id)
         if doc is None:
             return None
+        return await self.extract_text_from_doc(doc)
 
-        content = _file_store.get(doc_id)
+    async def extract_text_from_doc(self, doc: DocumentModel) -> DocumentModel:
+        """Extract text from a doc already in memory (no DB read, single write)."""
+        content = _file_store.get(doc.id)
         if content is None:
             doc.status = "error"
             doc.processing_error = "No file content available"
             return await self._document_repo.update(doc)
 
-        doc.status = "processing"
-        await self._document_repo.update(doc)
-
+        # Skip the intermediate "processing" status write — nobody reads it
         text = await extract_text_from_file(doc.filename, content)
         doc.raw_text = text
         doc.size_bytes = len(content)
         doc.size_tokens = estimate_tokens(text)
+        doc.status = "processing"
         return await self._document_repo.update(doc)
 
     async def extract_fields(self, doc_id: str) -> DocumentModel | None:
@@ -80,6 +83,18 @@ class DocumentService:
         if doc is None:
             return None
 
+        # Run field extraction first (summary needs fields as input)
+        doc.extracted_fields = await extract_fields_with_ai(
+            doc.filename, doc.raw_text, doc.document_type
+        )
+        doc.summary = await generate_document_summary(
+            doc.filename, doc.raw_text, doc.document_type, doc.extracted_fields
+        )
+        doc.status = "ready"
+        return await self._document_repo.update(doc)
+
+    async def extract_fields_from_doc(self, doc: DocumentModel) -> DocumentModel:
+        """Run AI field extraction + summary on a doc already in memory (no DB read)."""
         doc.extracted_fields = await extract_fields_with_ai(
             doc.filename, doc.raw_text, doc.document_type
         )

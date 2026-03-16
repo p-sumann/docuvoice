@@ -187,7 +187,7 @@ async def load_workspace_context(workspace_id: str) -> WorkspaceContext:
     Cached and S3 are fetched concurrently to reduce startup latency.
     """
     settings = get_settings()
-    has_s3 = bool(settings.aws_access_key_id and settings.s3_bucket_name)
+    has_s3 = bool(settings.s3_bucket_name)
 
     # 1. Race cached endpoint and S3 concurrently
     cached_result, s3_text = await asyncio.gather(
@@ -252,7 +252,9 @@ async def _load_from_documents(workspace_id: str) -> str:
             if resp.status_code != 200:
                 return ""
             data = resp.json()
-            documents = data.get("data", {}).get("items", []) if isinstance(data.get("data"), dict) else data.get("data", [])
+            all_documents = data.get("data", {}).get("items", []) if isinstance(data.get("data"), dict) else data.get("data", [])
+            # Only include documents that were successfully processed
+            documents = [d for d in all_documents if d.get("status") == "ready"]
             if not documents:
                 return ""
 

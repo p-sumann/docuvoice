@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ClipboardCheck, Scale, TrendingUp, Wrench } from "lucide-react";
+import { Check, ClipboardCheck, Scale, Sparkles, TrendingUp, Wrench } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ interface TemplateSelectorGridProps {
 }
 
 const domainIcons: Record<DomainType, React.ElementType> = {
+  auto: Sparkles,
   insurance_claims: ClipboardCheck,
   legal_contracts: Scale,
   financial_dd: TrendingUp,

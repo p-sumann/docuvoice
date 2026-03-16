@@ -63,6 +63,27 @@ async def list_documents(workspace_id: str) -> list[dict]:
 
 
 @_dynamo_retry
+async def list_findings_for_workspace(workspace_id: str) -> list[dict]:
+    """Load all findings for a workspace (from preparation and prior sessions)."""
+    settings = get_settings()
+    session = _get_session()
+    async with session.resource(
+        "dynamodb", region_name=settings.aws_default_region
+    ) as dynamodb:
+        table = await dynamodb.Table(settings.dynamodb_table_name)
+        # Findings have PK=SESSION#{session_id}, SK=FINDING#{index}
+        # Filter by workspace_id attribute
+        resp = await table.scan(
+            FilterExpression="begins_with(SK, :sk) AND workspace_id = :ws",
+            ExpressionAttributeValues={
+                ":sk": "FINDING#",
+                ":ws": workspace_id,
+            },
+        )
+        return resp.get("Items", [])
+
+
+@_dynamo_retry
 async def create_session(workspace_id: str, session_id: str, channel: str = "web") -> None:
     """Write a new session record to DynamoDB."""
     settings = get_settings()
@@ -125,14 +146,17 @@ async def update_session_end(
     duration: int,
     finding_count: int,
 ) -> None:
-    """Update session record with end time and stats."""
+    """Update session record with end time and stats, and bump workspace counters."""
     settings = get_settings()
     now = datetime.now(timezone.utc).isoformat()
+    minutes = round(duration / 60, 2)
     session = _get_session()
     async with session.resource(
         "dynamodb", region_name=settings.aws_default_region
     ) as dynamodb:
         table = await dynamodb.Table(settings.dynamodb_table_name)
+
+        # Update the session record
         await table.update_item(
             Key={"PK": f"WS#{workspace_id}", "SK": f"SESSION#{session_id}"},
             UpdateExpression=(
@@ -144,4 +168,23 @@ async def update_session_end(
                 ":fc": finding_count,
             },
         )
-        logger.info("session_ended", session_id=session_id, duration=duration)
+
+        # Increment session_count and minutes_used on the workspace record
+        from decimal import Decimal
+
+        await table.update_item(
+            Key={"PK": f"WS#{workspace_id}", "SK": f"WS#{workspace_id}"},
+            UpdateExpression=(
+                "SET session_count = if_not_exists(session_count, :zero) + :one, "
+                "minutes_used = if_not_exists(minutes_used, :zero_d) + :mins, "
+                "updated_at = :now"
+            ),
+            ExpressionAttributeValues={
+                ":one": 1,
+                ":zero": 0,
+                ":mins": Decimal(str(minutes)),
+                ":zero_d": Decimal("0"),
+                ":now": now,
+            },
+        )
+        logger.info("session_ended", session_id=session_id, duration=duration, minutes=minutes)

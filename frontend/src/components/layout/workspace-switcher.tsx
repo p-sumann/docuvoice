@@ -28,18 +28,14 @@ export function WorkspaceSwitcher({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <SidebarMenuButton
-          size="lg"
-          className="data-[state=open]:bg-[var(--dv-bg-hover)] w-full"
+          tooltip={active?.name ?? "Select Workspace"}
+          className="data-[state=open]:bg-[var(--dv-bg-hover)]"
         >
-          <div className="flex aspect-square size-6 items-center justify-center rounded-md bg-[var(--dv-bg-active)]">
-            <FolderOpen className="size-3.5 text-[var(--dv-wine-light)]" />
-          </div>
-          <div className="flex-1 text-left min-w-0">
-            <span className="truncate text-sm font-medium text-[var(--dv-text-primary)]">
-              {active?.name ?? "Select Workspace"}
-            </span>
-          </div>
-          <ChevronsUpDown className="ml-auto size-4 text-[var(--dv-text-muted)]" />
+          <FolderOpen className="size-4" />
+          <span className="truncate">
+            {active?.name ?? "Select Workspace"}
+          </span>
+          <ChevronsUpDown className="ml-auto size-3.5 text-[var(--dv-text-muted)]" />
         </SidebarMenuButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -70,7 +66,6 @@ export function WorkspaceSwitcher({
         <DropdownMenuSeparator className="bg-[var(--dv-border-subtle)]" />
         <DropdownMenuItem
           onClick={() => router.push("/workspace/new")}
-          className="text-[var(--dv-wine-light)]"
         >
           <Plus className="mr-2 size-4" />
           New Workspace
