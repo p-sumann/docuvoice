@@ -38,11 +38,10 @@ services:
     networks:
       - docuvoice
     logging:
-      driver: awslogs
+      driver: json-file
       options:
-        awslogs-group: /ecs/docuvoice-backend
-        awslogs-region: us-east-1
-        awslogs-stream-prefix: backend
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -64,11 +63,10 @@ services:
     networks:
       - docuvoice
     logging:
-      driver: awslogs
+      driver: json-file
       options:
-        awslogs-group: /ecs/docuvoice-frontend
-        awslogs-region: us-east-1
-        awslogs-stream-prefix: frontend
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
@@ -90,11 +88,10 @@ services:
     networks:
       - docuvoice
     logging:
-      driver: awslogs
+      driver: json-file
       options:
-        awslogs-group: /ecs/docuvoice-agent
-        awslogs-region: us-east-1
-        awslogs-stream-prefix: agent
+        max-size: "10m"
+        max-file: "3"
     deploy:
       resources:
         limits:
