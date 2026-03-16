@@ -90,14 +90,20 @@ export function WorkspacePreparing({
 
         if (status.step === "complete") {
           clearInterval(interval);
-          // Invalidate workspace cache so the parent re-fetches with status="ready"
-          const { setWorkspaceData } = await import("@/stores/workspace-store").then(m => m.useWorkspaceStore.getState());
-          // Force a refetch by resetting the timestamps
-          setWorkspaceData({
-            workspace: null,
-            documents: [],
-            findings: [],
-            extractedFields: [],
+          // Force the store to re-fetch workspace with updated status
+          const { fetchWorkspace, fetchDocuments, fetchFindings, fetchExtractedFields } = await import("@/lib/api");
+          const { useWorkspaceStore } = await import("@/stores/workspace-store");
+          const [workspace, documents, findings, extractedFields] = await Promise.all([
+            fetchWorkspace(workspaceId),
+            fetchDocuments(workspaceId),
+            fetchFindings(workspaceId),
+            fetchExtractedFields(workspaceId),
+          ]);
+          useWorkspaceStore.getState().setWorkspaceData({
+            workspace,
+            documents,
+            findings,
+            extractedFields,
           });
         }
 
